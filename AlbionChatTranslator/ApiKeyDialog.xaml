@@ -1,0 +1,54 @@
+<Window x:Class="AlbionChatTranslator.ApiKeyDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="DeepL API Key Required"
+        Width="480" SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="#1E1E1E">
+
+    <StackPanel Margin="24">
+
+        <TextBlock TextWrapping="Wrap" Foreground="#D0D0D0" FontSize="13" Margin="0,0,0,12">
+            This app uses <Bold>DeepL</Bold> to translate chat messages into English in real time.
+            DeepL is a free translation service — you just need a free account to get an API key.
+        </TextBlock>
+
+        <TextBlock TextWrapping="Wrap" Foreground="#D0D0D0" FontSize="13" Margin="0,0,0,6">
+            The free tier gives you <Bold>500,000 characters per month</Bold> — plenty for in-game chat.
+        </TextBlock>
+
+        <TextBlock Margin="0,0,0,16" FontSize="13">
+            <Hyperlink RequestNavigate="LinkDeepL_RequestNavigate"
+                       NavigateUri="https://www.deepl.com/en/pro-api#api-pricing"
+                       Foreground="#6A9FB5">Sign up for free</Hyperlink>
+            <Run Foreground="#666">  ·  then  ·  </Run>
+            <Hyperlink RequestNavigate="LinkDeepL_RequestNavigate"
+                       NavigateUri="https://www.deepl.com/en/your-account/keys"
+                       Foreground="#6A9FB5">get your API key</Hyperlink>
+        </TextBlock>
+
+        <TextBlock Text="Paste your API key below:" Foreground="#999"
+                   FontFamily="Consolas" FontSize="12" Margin="0,0,0,4"/>
+
+        <TextBox x:Name="TxtKey"
+                 Background="#252525" Foreground="#E0E0E0"
+                 BorderBrush="#555" Padding="6,4"
+                 FontFamily="Consolas" FontSize="12"
+                 Margin="0,0,0,16"/>
+
+        <TextBlock x:Name="TxtValidationError" Foreground="#C05050"
+                   FontFamily="Consolas" FontSize="11"
+                   Margin="0,0,0,8" Visibility="Collapsed"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="BtnOk" Content="OK" Width="80" Margin="0,0,8,0"
+                    Background="#2D5A8E" Foreground="White" BorderBrush="#3A6EA8"
+                    Click="BtnOk_Click" IsDefault="True"/>
+            <Button Content="Cancel" Width="80" Click="BtnCancel_Click"
+                    Background="#3C3C3C" Foreground="#D0D0D0" BorderBrush="#555"
+                    IsCancel="True"/>
+        </StackPanel>
+
+    </StackPanel>
+</Window>

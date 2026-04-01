@@ -1,0 +1,83 @@
+<Window x:Class="AlbionChatTranslator.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings"
+        Width="340" SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="#1E1E1E">
+
+    <StackPanel Margin="20">
+
+        <!-- Global channel toggle -->
+        <TextBlock Text="GLOBAL CHANNELS" Foreground="#666" FontFamily="Consolas"
+                   FontSize="10" FontWeight="Bold" Margin="0,0,0,6"/>
+
+        <CheckBox x:Name="CbBlockGlobals" Margin="0,0,0,2">
+            <TextBlock Text="Block all global channels" Foreground="#D0D0D0"
+                       FontFamily="Consolas" FontSize="12"/>
+        </CheckBox>
+        <TextBlock Text="  When checked, byte-keyed globals (faction, English, Help, etc.) are&#x0a;  suppressed even if the tab would otherwise include them."
+                   Foreground="#555" FontFamily="Consolas" FontSize="10"
+                   TextWrapping="Wrap" Margin="0,2,0,0"/>
+
+        <Separator/>
+
+        <!-- Tab toggles -->
+        <TextBlock Text="TABS" Foreground="#666" FontFamily="Consolas"
+                   FontSize="10" FontWeight="Bold" Margin="0,0,0,8"/>
+
+        <TextBlock Text="Uncheck a tab to stop receiving and translating its messages."
+                   Foreground="#555" FontFamily="Consolas" FontSize="10"
+                   TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+        <!-- Dynamic tabs (populated in code-behind) -->
+        <StackPanel x:Name="TabCheckboxPanel"/>
+
+        <TextBlock x:Name="TxtNoTabs"
+                   Text="No tabs loaded yet — log in to Albion to populate."
+                   Foreground="#555" FontFamily="Consolas" FontSize="10"
+                   TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+        <Separator Margin="0,12,0,8"/>
+
+        <!-- Translation settings -->
+        <TextBlock Text="TRANSLATION" Foreground="#666" FontFamily="Consolas"
+                   FontSize="10" FontWeight="Bold" Margin="0,0,0,8"/>
+
+        <TextBlock Text="Translate chat to:" Foreground="#C0C0C0"
+                   FontFamily="Consolas" FontSize="12" Margin="0,0,0,4"/>
+        <ComboBox x:Name="CboTargetLang"
+                  IsEditable="True" IsTextSearchEnabled="False"
+                  FontFamily="Consolas" FontSize="12"
+                  Margin="0,0,0,4"/>
+        <TextBlock Text="  Type to search by language name or code."
+                   Foreground="#555" FontFamily="Consolas" FontSize="10"
+                   TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+            <TextBlock Text="Min message length to translate:" Foreground="#C0C0C0"
+                       FontFamily="Consolas" FontSize="12" VerticalAlignment="Center"
+                       Margin="0,0,8,0"/>
+            <TextBox x:Name="TxtMinLength" Width="40" FontFamily="Consolas" FontSize="12"
+                     HorizontalContentAlignment="Center"/>
+        </StackPanel>
+        <TextBlock Text="  Messages shorter than this many characters are shown as-is.&#x0a;  Prevents misidentifying short words like 'hi' or 'test'."
+                   Foreground="#555" FontFamily="Consolas" FontSize="10"
+                   TextWrapping="Wrap" Margin="0,4,0,10"/>
+
+        <Separator Margin="0,12,0,8"/>
+
+        <!-- Buttons -->
+        <Button Content="Reset all to defaults" Click="BtnReset_Click"
+                HorizontalAlignment="Left" Padding="8,4" Margin="0,0,0,12"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Save" Width="80" Margin="0,0,8,0"
+                    Background="#2D5A8E" Foreground="White" BorderBrush="#3A6EA8"
+                    IsDefault="True" Click="BtnSave_Click"/>
+            <Button Content="Cancel" Width="80" IsCancel="True" Click="BtnCancel_Click"/>
+        </StackPanel>
+
+    </StackPanel>
+</Window>

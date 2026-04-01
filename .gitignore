@@ -1,0 +1,19 @@
+# Build output
+bin/
+obj/
+publish/
+publish_single/
+installer_out/
+
+# User secrets / settings
+**/appsettings.*.json
+
+# VS / Rider
+.vs/
+.idea/
+*.user
+*.suo
+
+# OS
+Thumbs.db
+.DS_Store
