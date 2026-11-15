@@ -1,0 +1,26 @@
+<Window x:Class="AlbionChatTranslator.WelcomeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Welcome"
+        Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="#1A1A1A">
+
+    <StackPanel Margin="24">
+        <TextBlock Text="Albion Chat Translator" Foreground="{StaticResource Accent}" FontSize="18" FontWeight="Bold"/>
+        <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,16"
+                   Text="Translates Albion Online chat on your own PC. Free, no account, and your chat never leaves your computer."/>
+
+        <TextBlock Text="Which language do you read?" Foreground="#D0D0D0" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+        <ComboBox x:Name="CboLanguage" DisplayMemberPath="Name" Height="26" Margin="0,0,0,16"/>
+
+        <TextBlock Text="How it works" Foreground="#D0D0D0" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+        <TextBlock Style="{StaticResource Hint}" Text="1.  Click ▶ Start and approve the Windows prompt. Reading game traffic needs administrator rights; only a small hidden helper gets them."/>
+        <TextBlock Style="{StaticResource Hint}" Text="2.  Log in to Albion. Your chat tabs show up here by themselves."/>
+        <TextBlock Style="{StaticResource Hint}" Text="3.  The first time a new language appears in chat, its language pack (about 110 MB) downloads in the background. After that it works offline."/>
+        <TextBlock Style="{StaticResource Hint}" Text="4.  Click the (Language) tag after a message to reply in that language."/>
+
+        <Button Content="Let's go" IsDefault="True" HorizontalAlignment="Right" Width="110" Margin="0,16,0,0"
+                Style="{StaticResource PrimaryButton}" Click="BtnOk_Click"/>
+    </StackPanel>
+</Window>

@@ -17,3 +17,6 @@ installer_out/
 # OS
 Thumbs.db
 .DS_Store
+
+# Velopack output
+Releases/

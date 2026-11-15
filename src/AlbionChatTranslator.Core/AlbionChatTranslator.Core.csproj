@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>AlbionChatTranslator.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DeepL.net" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+    <PackageReference Include="Microsoft.ML.Tokenizers" />
+    <PackageReference Include="SearchPioneer.Lingua" GeneratePathProperty="true" ExcludeAssets="contentFiles" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\external\StatisticsAnalysis\StatisticsAnalysisTool.Abstractions\StatisticsAnalysisTool.Abstractions.csproj" />
+    <ProjectReference Include="..\..\external\StatisticsAnalysis\StatisticsAnalysisTool.Network\StatisticsAnalysisTool.Network.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Translation\model-catalog.json" LogicalName="model-catalog.json" />
+  </ItemGroup>
+
+  <!--
+    Lingua ships detection models for 75 languages (~140 MB). Copy only the languages the app
+    can translate (keep in sync with Translation/Languages.cs). Content items with
+    CopyToOutputDirectory also flow into every project that references this one.
+  -->
+  <PropertyGroup>
+    <LinguaKeepPattern>^(ar|cs|da|de|en|es|et|fi|fr|hi|hu|id|it|ja|ko|nl|pl|pt|ro|ru|sv|th|tr|uk|vi|zh)[\\/]$</LinguaKeepPattern>
+    <LinguaModelRoot>$(PkgSearchPioneer_Lingua)\contentFiles\any\any\Lingua\LanguageModels</LinguaModelRoot>
+  </PropertyGroup>
+  <Target Name="AddLinguaModels" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <_LinguaModel Include="$(LinguaModelRoot)\**\*" />
+      <_LinguaKeep Include="@(_LinguaModel)"
+                   Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(_LinguaModel.RecursiveDir)', '$(LinguaKeepPattern)'))" />
+      <Content Include="@(_LinguaKeep)"
+               Link="Lingua\LanguageModels\%(_LinguaKeep.RecursiveDir)%(_LinguaKeep.Filename)%(_LinguaKeep.Extension)"
+               CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AlbionChatTranslator.Tests" />
+  </ItemGroup>
+
+</Project>

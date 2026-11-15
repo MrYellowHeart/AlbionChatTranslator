@@ -1,0 +1,50 @@
+<Window x:Class="AlbionChatTranslator.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings"
+        Width="400" SizeToContent="Height" MaxHeight="760"
+        ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
+        Background="#1E1E1E">
+
+    <DockPanel Margin="20,10,20,16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Save" Width="80" Margin="0,0,8,0" IsDefault="True" Style="{StaticResource PrimaryButton}" Click="BtnSave_Click"/>
+            <Button Content="Cancel" Width="80" IsCancel="True"/>
+        </StackPanel>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="TRANSLATE CHAT INTO" Style="{StaticResource SectionHeader}"/>
+                <ComboBox x:Name="CboLanguage" DisplayMemberPath="Name" Height="26"/>
+
+                <TextBlock Text="TRANSLATOR" Style="{StaticResource SectionHeader}"/>
+                <RadioButton x:Name="RbOffline" GroupName="Provider" Content="Offline (recommended): private, free, no account"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="20,0,0,6"
+                           Text="Runs on your PC. Chat never leaves your computer. Each language needs a one-time download of about 110 MB."/>
+                <CheckBox x:Name="CbAutoDownload" Margin="20,0,0,0" Content="Download language packs automatically when needed"/>
+                <StackPanel Orientation="Horizontal" Margin="20,4,0,8">
+                    <TextBlock x:Name="TxtPacks" Foreground="#888" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <Button Content="Delete packs" Padding="6,1" FontSize="11" Click="BtnDeletePacks_Click"/>
+                </StackPanel>
+
+                <RadioButton x:Name="RbDeepL" GroupName="Provider" Content="DeepL (optional): needs your own API key"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="20,0,0,4"
+                           Text="Better with slang, but chat text is sent to DeepL. Key is encrypted with your Windows account."/>
+                <PasswordBox x:Name="TxtDeepLKey" Margin="20,0,0,0" Height="24"/>
+
+                <TextBlock Text="CHAT" Style="{StaticResource SectionHeader}"/>
+                <CheckBox x:Name="CbGlobal" Content="Include global channels (trade, recruitment, help…)"/>
+                <CheckBox x:Name="CbTopmost" Content="Keep window on top of the game"/>
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                    <TextBlock Text="Skip messages with fewer letters than" Foreground="#D0D0D0" FontSize="12" VerticalAlignment="Center"/>
+                    <TextBox x:Name="TxtMinLetters" Width="36" Margin="8,0,0,0" HorizontalContentAlignment="Center"/>
+                </StackPanel>
+
+                <TextBlock Text="TABS" Style="{StaticResource SectionHeader}"/>
+                <TextBlock x:Name="TxtNoTabs" Style="{StaticResource Hint}"
+                           Text="Your in-game chat tabs appear here after you log in to Albion while capturing."/>
+                <StackPanel x:Name="TabPanel"/>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

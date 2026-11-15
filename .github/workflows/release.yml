@@ -1,0 +1,70 @@
+name: Release
+
+# Push a tag like v2.0.0 to build, test, package and publish an installer + auto-update feed.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # create the GitHub release
+
+env:
+  VPK_VERSION: 1.2.161 # keep equal to the Velopack package version in Directory.Packages.props
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Version from tag
+        id: v
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - run: dotnet test --project tests/AlbionChatTranslator.Tests -c Release
+
+      - run: dotnet publish src/AlbionChatTranslator -c Release -o publish -p:Version=${{ steps.v.outputs.version }}
+
+      - run: dotnet tool install -g vpk --version ${{ env.VPK_VERSION }}
+
+      # Lets Velopack build small delta updates against the previous release.
+      - name: Fetch previous release
+        continue-on-error: true
+        run: vpk download github --repoUrl ${{ github.server_url }}/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
+
+      # Code signing is optional but removes the SmartScreen "unknown publisher" warning.
+      # To enable: create an Azure Trusted Signing account, then add the repository secrets
+      # AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET and a file `signing.json`
+      # (see https://docs.velopack.io/packaging/signing). Without them the build is unsigned.
+      - name: Package
+        shell: bash
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: |
+          SIGN=()
+          if [ -n "$AZURE_CLIENT_ID" ] && [ -f signing.json ]; then SIGN=(--azureTrustedSignFile signing.json); fi
+          vpk pack --packId AlbionChatTranslator --packVersion ${{ steps.v.outputs.version }} \
+            --packDir publish --mainExe AlbionChatTranslator.exe --packTitle "Albion Chat Translator" \
+            --icon src/AlbionChatTranslator/Assets/app.ico "${SIGN[@]}"
+
+      - name: Checksums
+        shell: bash
+        run: cd Releases && sha256sum *Setup.exe *.nupkg > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - name: Publish release
+        run: >
+          vpk upload github --repoUrl ${{ github.server_url }}/${{ github.repository }}
+          --token ${{ secrets.GITHUB_TOKEN }} --publish --releaseName "Albion Chat Translator ${{ steps.v.outputs.version }}"
+          --tag ${{ github.ref_name }}
+
+      - name: Attach checksums
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.ref_name }} Releases/SHA256SUMS.txt --clobber
