@@ -31,6 +31,9 @@ public sealed class MarianModel : IDisposable
             IntraOpNumThreads = threads,
             InterOpNumThreads = 1,
             ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
+            // The arena keeps its peak allocation forever (hundreds of MB after a long line).
+            // Chat lines are tiny, so plain allocations cost nothing noticeable and RAM stays flat.
+            EnableCpuMemArena = Environment.GetEnvironmentVariable("ACT_ORT_ARENA") == "1",
         };
         _encoder = new InferenceSession(Path.Combine(directory, "onnx", "encoder_model_quantized.onnx"), options);
         _decoder = new InferenceSession(Path.Combine(directory, "onnx", "decoder_model_quantized.onnx"), options);
