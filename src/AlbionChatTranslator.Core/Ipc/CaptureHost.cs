@@ -79,6 +79,7 @@ public static class CaptureHost
             parser.LineReceived += line => Send(new PipeMessage { Type = PipeMessage.TypeLine, Line = line });
             parser.TabsReceived += tabs => Send(new PipeMessage { Type = PipeMessage.TypeTabs, Tabs = [.. tabs] });
             parser.RoomJoined += (room, channel) => Send(new PipeMessage { Type = PipeMessage.TypeRoom, Room = room, Channel = channel });
+            parser.RoomRemoved += room => Send(new PipeMessage { Type = PipeMessage.TypeRoom, Room = room });
             parser.Diagnostic += note => Send(new PipeMessage { Type = PipeMessage.TypeDiagnostic, Status = note });
 
             using var capture = new RawSocketCapture(parser.BuildReceiver());

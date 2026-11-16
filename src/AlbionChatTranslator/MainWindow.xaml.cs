@@ -168,6 +168,7 @@ public partial class MainWindow : Window
         client.LineReceived += line => Dispatcher.InvokeAsync(() => OnChatLine(line));
         client.TabsReceived += tabs => Dispatcher.InvokeAsync(() => OnTabsFromGame(tabs));
         client.RoomJoined += (room, channel) => Dispatcher.InvokeAsync(() => OnRoomJoined(room, channel));
+        client.RoomRemoved += room => Dispatcher.InvokeAsync(() => { if (_settings.Rooms.Remove(room)) SaveRoomsSoon(); });
         client.Diagnostic += note => DiagnosticLog.Write($"capture: {note}");
         client.StatusChanged += (text, ok) => Dispatcher.InvokeAsync(() =>
         {
@@ -226,6 +227,11 @@ public partial class MainWindow : Window
     {
         if (_settings.Rooms.TryGetValue(room, out int old) && old == channel) return;
         _settings.Rooms[room] = channel;
+        SaveRoomsSoon();
+    }
+
+    private void SaveRoomsSoon()
+    {
         if (_roomsSavePending) return;
         _roomsSavePending = true;
         Dispatcher.BeginInvoke(() =>
@@ -241,7 +247,7 @@ public partial class MainWindow : Window
         bool known = true;
         if (line.Room is int room)
         {
-            if (_settings.Rooms.TryGetValue(room, out int channel))
+            if (KnownChannels.TryResolveRoom(room, _settings.Rooms, out int channel))
                 line = line with { ChannelId = channel, Kind = KnownChannels.KindOf(channel), Room = null };
             else
                 known = false;
@@ -253,7 +259,7 @@ public partial class MainWindow : Window
         var targets = _settings.Tabs.Count == 0
             ? _tabs.Where(t => t.Name == FallbackTabName).ToList()
             : !known ? []
-            : _settings.Tabs.Where(t => t.Enabled && t.ChannelIds.Contains(line.ChannelId))
+            : _settings.Tabs.Where(t => t.Enabled && KnownChannels.TabShows(t.ChannelIds, line.ChannelId))
                 .Select(t => _tabs.FirstOrDefault(vm => vm.Name.Equals(t.Name, StringComparison.OrdinalIgnoreCase)))
                 .OfType<ChatTabViewModel>().ToList();
 

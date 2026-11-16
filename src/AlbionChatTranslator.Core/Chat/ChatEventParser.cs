@@ -34,6 +34,9 @@ public sealed class ChatEventParser
     /// <summary>The game said which chat-settings channel a chat room belongs to: (room, channel).</summary>
     public event Action<int, int>? RoomJoined;
 
+    /// <summary>The game closed a chat room (for example the zone chat when you leave the zone).</summary>
+    public event Action<int>? RoomRemoved;
+
     /// <summary>Technical notes for the optional diagnostic log: channel numbers only, never text or names.</summary>
     public event Action<string>? Diagnostic;
 
@@ -78,8 +81,18 @@ public sealed class ChatEventParser
                 else
                     Diagnostic?.Invoke("JoinedChatChannel did not match the expected layout ([0] channel, [1] room); not used");
                 break;
-            case EventCodes.LeftChatChannel or EventCodes.RemovedChatChannel:
-                Diagnostic?.Invoke($"event {(EventCodes)packet.EventCode}: {EventShape.Describe(packet.Parameters)}");
+            case EventCodes.LeftChatChannel:
+                Diagnostic?.Invoke($"event LeftChatChannel: {EventShape.Describe(packet.Parameters)}");
+                break;
+            case EventCodes.RemovedChatChannel:
+                Diagnostic?.Invoke($"event RemovedChatChannel: {EventShape.Describe(packet.Parameters)}");
+                // [0] room number (seen in game, Nov 2026). The number can be reused later.
+                if (ParamReader.TryGetInt(packet.Parameters, 0, out int removed))
+                {
+                    bool had;
+                    lock (_lock) had = _dynamicChannels.Remove(removed);
+                    if (had) RoomRemoved?.Invoke(removed);
+                }
                 break;
             case EventCodes.UpdateChatSettings:
                 LogShapeOnce("UpdateChatSettings", "event UpdateChatSettings", packet.Parameters);

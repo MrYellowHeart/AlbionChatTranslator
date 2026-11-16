@@ -81,3 +81,61 @@ public class RoomTests
         finally { Directory.Delete(dir, true); }
     }
 }
+
+public class RoomDefaultsTests
+{
+    private static readonly Dictionary<int, int> None = [];
+
+    [Theory]
+    [InlineData(18, 2)]  // Recruit
+    [InlineData(19, 3)]  // Looking for group
+    [InlineData(21, 5)]  // Help
+    [InlineData(2, 8)]   // in none of the default tabs
+    public void Fixed_rooms_sort_without_a_relog(int room, int channel)
+    {
+        Assert.True(KnownChannels.TryResolveRoom(room, None, out int resolved));
+        Assert.Equal(channel, resolved);
+    }
+
+    [Fact]
+    public void The_games_own_announcement_wins_and_unknown_rooms_stay_unknown()
+    {
+        Assert.True(KnownChannels.TryResolveRoom(18, new Dictionary<int, int> { [18] = 5 }, out int resolved));
+        Assert.Equal(5, resolved);
+        Assert.False(KnownChannels.TryResolveRoom(105579, None, out _));
+    }
+
+    [Fact]
+    public void Removed_rooms_are_forgotten()
+    {
+        var parser = new ChatEventParser();
+        var lines = new List<ChatLine>();
+        var removed = new List<int>();
+        parser.LineReceived += lines.Add;
+        parser.RoomRemoved += removed.Add;
+        parser.Handle(new EventPacket((short)EventCodes.JoinedChatChannel, new Dictionary<byte, object> { [0] = 27, [1] = 409 }));
+        parser.Handle(new EventPacket((short)EventCodes.RemovedChatChannel, new Dictionary<byte, object> { [0] = 409 }));
+        parser.Handle(new EventPacket((short)EventCodes.ChatMessage, new Dictionary<byte, object> { [0] = 409, [1] = "Al", [2] = "anyone here", [3] = (byte)0 }));
+
+        Assert.Equal([409], removed);
+        Assert.Equal(409, lines.Single().Room); // no longer assigned
+    }
+}
+
+public class TabShowsTests
+{
+    private static readonly int[] General = [23, 27, 31, 28, 38, 33, 34, 26];
+    private static readonly int[] Recruit = [2, 28, 33];
+
+    [Fact]
+    public void Language_chat_rooms_show_where_the_tab_lists_23()
+    {
+        Assert.True(KnownChannels.TabShows(General, 8));
+        Assert.True(KnownChannels.TabShows(General, 22));
+        Assert.False(KnownChannels.TabShows(Recruit, 8));
+        Assert.False(KnownChannels.TabShows(General, 7));   // not a language room
+        Assert.False(KnownChannels.TabShows(General, 2));   // Recruit stays in Recruit
+        Assert.True(KnownChannels.TabShows(Recruit, 2));
+        Assert.True(KnownChannels.TabShows(General, 27));   // zone chat
+    }
+}

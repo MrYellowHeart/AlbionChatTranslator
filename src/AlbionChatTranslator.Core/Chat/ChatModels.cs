@@ -49,6 +49,33 @@ public static class KnownChannels
     public const int Guild = 24;
     public const int Alliance = 25;
 
+    /// <summary>
+    /// The game's fixed chat rooms (room number -> channel), exactly as the game announced them at
+    /// login in two separate sessions (Nov 2026): e.g. room 18 = Recruit (2), 19 = Looking for
+    /// group (3), 21 = Help (5). Used only until the game announces its own list, which always wins.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<int, int> DefaultRooms = new Dictionary<int, int>
+    {
+        [1] = 0, [2] = 8, [3] = 9, [4] = 10, [5] = 11, [6] = 13, [7] = 14, [8] = 12, [9] = 15, [10] = 16, [11] = 17,
+        [12] = 18, [13] = 19, [14] = 20, [15] = 21, [16] = 22, [17] = 1, [18] = 2, [19] = 3, [20] = 4, [21] = 5, [22] = 7,
+    };
+
+    /// <summary>Channel for a room the game hasn't assigned this session: last announcement, else the fixed table.</summary>
+    public static bool TryResolveRoom(int room, IReadOnlyDictionary<int, int> remembered, out int channel) =>
+        remembered.TryGetValue(room, out channel) || DefaultRooms.TryGetValue(room, out channel);
+
+    /// <summary>
+    /// Tab entry that stands for the public chat of the player's language. Inferred, not
+    /// documented: channels 8-22 are fifteen consecutive rooms, the client joins exactly one of
+    /// them at login, no tab lists any of them, and the General tab lists 23, which has no room
+    /// of its own.
+    /// </summary>
+    public const int LanguageChat = 23;
+
+    /// <summary>Whether a tab with these channel entries shows a message from this channel.</summary>
+    public static bool TabShows(IReadOnlyCollection<int> tabChannels, int channel) =>
+        tabChannels.Contains(channel) || channel is >= 8 and <= 22 && tabChannels.Contains(LanguageChat);
+
     public static ChannelKind KindOf(int channelId) => channelId switch
     {
         Say => ChannelKind.Say,

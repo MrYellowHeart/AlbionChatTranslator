@@ -23,6 +23,7 @@ public sealed class CaptureClient : IAsyncDisposable
     public event Action<string, bool>? StatusChanged;
     public event Action<string>? Diagnostic;
     public event Action<int, int>? RoomJoined;
+    public event Action<int>? RoomRemoved;
     public event Action? Stopped;
 
     public bool IsRunning => _readLoop is { IsCompleted: false };
@@ -124,6 +125,9 @@ public sealed class CaptureClient : IAsyncDisposable
                             break;
                         case PipeMessage.TypeRoom when msg is { Room: int room, Channel: int channel }:
                             RoomJoined?.Invoke(room, channel);
+                            break;
+                        case PipeMessage.TypeRoom when msg is { Room: int gone, Channel: null }:
+                            RoomRemoved?.Invoke(gone);
                             break;
                     }
                 }
