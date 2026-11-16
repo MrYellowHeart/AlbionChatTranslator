@@ -32,6 +32,9 @@ public sealed class AppSettings
     public bool IncludeGlobalChannels { get; set; }
     public int MinLetters { get; set; } = 4;
     public bool AlwaysOnTop { get; set; } = true;
+
+    /// <summary>Stay on top (and show the overlay) only while Albion or this app is the active window.</summary>
+    public bool OnTopOnlyWithGame { get; set; } = true;
     public int MaxLinesPerTab { get; set; } = 500;
     public List<TabSetting> Tabs { get; set; } = [];
 
@@ -81,6 +84,8 @@ public sealed class AppSettings
     public double OverlayOpacity { get; set; } = 0.75;
     public bool OverlayTranslatedOnly { get; set; } = true;
     public bool OverlayClickThrough { get; set; } = true;
+    /// <summary>The game tab shown in the overlay.</summary>
+    public string? OverlayTab { get; set; }
     public double OverlayLeft { get; set; } = double.NaN;
     public double OverlayTop { get; set; } = double.NaN;
     public double OverlayWidth { get; set; } = 520;

@@ -60,6 +60,7 @@ public partial class SettingsWindow : Window
         CbOverlayTranslatedOnly.IsChecked = settings.OverlayTranslatedOnly;
         CbGlobal.IsChecked = settings.IncludeGlobalChannels;
         CbTopmost.IsChecked = settings.AlwaysOnTop;
+        CbOnTopOnlyWithGame.IsChecked = settings.OnTopOnlyWithGame;
         TxtMinLetters.Text = settings.MinLetters.ToString();
 
         TxtNoTabs.Visibility = settings.Tabs.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -166,6 +167,7 @@ public partial class SettingsWindow : Window
         _settings.OverlayTranslatedOnly = CbOverlayTranslatedOnly.IsChecked == true;
         _settings.IncludeGlobalChannels = CbGlobal.IsChecked == true;
         _settings.AlwaysOnTop = CbTopmost.IsChecked == true;
+        _settings.OnTopOnlyWithGame = CbOnTopOnlyWithGame.IsChecked == true;
         if (int.TryParse(TxtMinLetters.Text, out int min)) _settings.MinLetters = Math.Clamp(min, 1, 50);
         foreach (var (box, tab) in _tabBoxes) tab.Enabled = box.IsChecked == true;
 

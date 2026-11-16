@@ -54,6 +54,8 @@ The app never types into the game or sends anything there. **You** always paste 
 Press **Ctrl+Shift+O** to show or hide a see-through chat feed on top of the game.
 While it is locked, mouse clicks go straight through it to Albion. Press **Ctrl+Shift+L** to unlock it, drag it where you want, resize it from the corner, then press **Ctrl+Shift+L** again to lock it.
 
+It has the **same tabs as your in-game chat**, in a small bar above it; click a tab to switch (this doesn't take focus from the game), and tabs with new messages show how many. The overlay hides while you're in another program and comes back when you return to Albion. Albion needs to run in windowed or borderless mode for overlays to show.
+
 ### Hotkeys
 
 | Keys | What it does |

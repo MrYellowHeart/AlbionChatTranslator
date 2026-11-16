@@ -89,6 +89,7 @@
                 <TextBlock Text="CHAT" Style="{StaticResource SectionHeader}"/>
                 <CheckBox x:Name="CbGlobal" Content="Include global channels (trade, recruitment, help…)"/>
                 <CheckBox x:Name="CbTopmost" Content="Keep this window on top of the game"/>
+                <CheckBox x:Name="CbOnTopOnlyWithGame" Margin="20,0,0,0" Content="Only while Albion (or this app) is in front: hide the overlay when I switch to other programs"/>
                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                     <TextBlock Text="Skip messages with fewer letters than" Foreground="#D0D0D0" FontSize="12" VerticalAlignment="Center"/>
                     <TextBox x:Name="TxtMinLetters" Width="36" Margin="8,0,0,0" HorizontalContentAlignment="Center"/>

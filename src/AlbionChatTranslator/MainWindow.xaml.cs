@@ -23,7 +23,7 @@ public partial class MainWindow : Window
     private readonly TranslationService _translation;
     private readonly Updater _updater = new();
     private readonly ObservableCollection<ChatTabViewModel> _tabs = [];
-    private readonly ObservableCollection<ChatEntry> _overlayFeed = [];
+    private GameFocusWatcher? _focus;
     private ITranslationProvider? _keyed;
     private int _lastProgressPercent = -1;
     private CaptureClient? _capture;
@@ -34,7 +34,6 @@ public partial class MainWindow : Window
     private int _messageCount;
     private int _sentCount;
 
-    private const int OverlayLines = 60;
 
     public MainWindow()
     {
@@ -57,7 +56,17 @@ public partial class MainWindow : Window
         ApplySettings();
         if (_settings.KeepCacheOnDisk) _translation.LoadCache(AppSettings.CachePath);
 
-        SourceInitialized += (_, _) => RegisterHotkeys();
+        SourceInitialized += (_, _) =>
+        {
+            RegisterHotkeys();
+            _focus = new GameFocusWatcher();
+            _focus.ActiveChanged += active =>
+            {
+                UpdateTopmost();
+                _overlay?.SetGameActive(active);
+            };
+            UpdateTopmost();
+        };
 
         Loaded += async (_, _) =>
         {
@@ -79,6 +88,7 @@ public partial class MainWindow : Window
                 catch (IOException) { }
             }
             _hotkeys?.Dispose();
+            _focus?.Dispose();
             if (_capture is not null) await _capture.DisposeAsync();
         };
         Closed += async (_, _) =>
@@ -92,9 +102,13 @@ public partial class MainWindow : Window
 
     // ── Settings ─────────────────────────────────────────────────────────────
 
+    /// <summary>On top only while you're in Albion or this app, unless that option is off.</summary>
+    private void UpdateTopmost() =>
+        Topmost = _settings.AlwaysOnTop && (!_settings.OnTopOnlyWithGame || _focus is null || _focus.IsActive);
+
     private void ApplySettings()
     {
-        Topmost = _settings.AlwaysOnTop;
+        UpdateTopmost();
         _translation.TargetLanguage = _settings.TargetLanguage;
         _translation.MinLetters = _settings.MinLetters;
         _translation.ReadLanguages = _settings.ReadLanguages.ToHashSet();
@@ -207,7 +221,6 @@ public partial class MainWindow : Window
 
         var entry = new ChatEntry(line);
         foreach (var tab in targets) tab.Add(entry, _settings.MaxLinesPerTab);
-        _overlayFeed.AddCapped(entry, OverlayLines);
         TxtCount.Text = (++_messageCount).ToString();
 
         if (_settings.NeverSendChannels.Contains(line.Kind))
@@ -306,9 +319,10 @@ public partial class MainWindow : Window
             _overlay.Close();
             return;
         }
-        _overlay = new OverlayWindow(_settings, _overlayFeed);
+        _overlay = new OverlayWindow(_settings, _tabs);
         _overlay.Closed += (_, _) => { _overlay = null; _settings.Save(); };
         _overlay.Show();
+        _overlay.SetGameActive(_focus?.IsActive ?? true);
     }
 
     // ── Toolbar ──────────────────────────────────────────────────────────────
@@ -316,7 +330,6 @@ public partial class MainWindow : Window
     private void BtnClear_Click(object sender, RoutedEventArgs e)
     {
         foreach (var tab in _tabs) tab.Entries.Clear();
-        _overlayFeed.Clear();
         _messageCount = 0;
         TxtCount.Text = "0";
         TxtError.Text = string.Empty;
