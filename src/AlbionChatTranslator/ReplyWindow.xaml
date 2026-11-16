@@ -1,9 +1,9 @@
 <Window x:Class="AlbionChatTranslator.ReplyWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Reply"
+        Title="Reply in their language"
         Width="440" SizeToContent="Height" ResizeMode="NoResize"
-        WindowStartupLocation="CenterOwner"
+        WindowStartupLocation="CenterScreen"
         Background="#1E1E1E">
 
     <StackPanel Margin="16">
@@ -14,9 +14,9 @@
 
         <TextBox x:Name="TxtInput" Height="80" AcceptsReturn="True" TextWrapping="Wrap"
                  VerticalScrollBarVisibility="Auto" Margin="0,0,0,8"
-                 ToolTip="Write in your own language. Ctrl+Enter translates."/>
+                 ToolTip="Write in your own language. Enter translates and copies."/>
 
-        <Button x:Name="BtnTranslate" Content="→ Translate" Click="BtnTranslate_Click" HorizontalAlignment="Left"
+        <Button x:Name="BtnTranslate" Content="→ Translate and copy" Click="BtnTranslate_Click" HorizontalAlignment="Left"
                 Padding="10,4" Margin="0,0,0,8" Style="{StaticResource PrimaryButton}"/>
 
         <TextBox x:Name="TxtOutput" Height="80" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"

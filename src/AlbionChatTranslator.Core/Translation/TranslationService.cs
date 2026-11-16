@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Channels;
 
 namespace AlbionChatTranslator.Core.Translation;
@@ -17,6 +19,8 @@ public enum TranslationOutcome
 
 public sealed record TranslationResult(TranslationOutcome Outcome, string? Text = null, string? SourceLanguage = null, string? Message = null)
 {
+    [JsonIgnore] public DateTimeOffset CachedAt { get; init; } = DateTimeOffset.UtcNow;
+
     public static readonly TranslationResult Skip = new(TranslationOutcome.Skipped);
 }
 
@@ -52,6 +56,12 @@ public sealed class TranslationService : IAsyncDisposable
 
     /// <summary>Lines with fewer letters than this are shown as-is ("gg", "ok", "ty").</summary>
     public int MinLetters { get; set; } = 4;
+
+    /// <summary>Other languages the reader understands: never translated, never sent.</summary>
+    public IReadOnlySet<string> ReadLanguages { get; set; } = new HashSet<string>();
+
+    private bool Understands(string? lang, string target) =>
+        lang is not null && (lang == Languages.Normalize(target) || ReadLanguages.Contains(lang));
 
     public ITranslationProvider Provider
     {
@@ -95,7 +105,8 @@ public sealed class TranslationService : IAsyncDisposable
         if (!Glossary.HasTranslatableContent(p.Text))
             return new TranslationResult(TranslationOutcome.SameLanguage, text);
 
-        var result = await RunAsync(text, p, toLanguage, ct).ConfigureAwait(false);
+        var mine = await Task.Run(() => _detector.Detect(p.Text, TargetLanguage), ct).ConfigureAwait(false);
+        var result = await RunAsync(text, WithPlainEnglish(p, mine), toLanguage, ct).ConfigureAwait(false);
         return result.Outcome == TranslationOutcome.SameLanguage ? result with { Text = text } : result;
     }
 
@@ -126,12 +137,12 @@ public sealed class TranslationService : IAsyncDisposable
 
     private async Task<TranslationResult> ProcessAsync(Job job, CancellationToken ct)
     {
-        // Privacy filter: lines in the reader's own language are never sent anywhere.
+        // Privacy filter: lines in a language the reader understands are never sent anywhere.
         var local = _detector.Detect(job.Protected.Text, job.Target);
-        if (local == Languages.Normalize(job.Target))
+        if (Understands(local, job.Target))
             return new TranslationResult(TranslationOutcome.SameLanguage, SourceLanguage: local);
 
-        return await RunAsync(job.Text, job.Protected, job.Target, ct).ConfigureAwait(false);
+        return await RunAsync(job.Text, WithPlainEnglish(job.Protected, local), job.Target, ct).ConfigureAwait(false);
     }
 
     private async Task<TranslationResult> RunAsync(string original, ProtectedText p, string target, CancellationToken ct)
@@ -148,7 +159,7 @@ public sealed class TranslationService : IAsyncDisposable
                     Message: r.Message);
             }
 
-            if (r.SourceLanguage is { } src && src == Languages.Normalize(target))
+            if (r.SourceLanguage is { } src && Understands(src, target))
                 return new TranslationResult(TranslationOutcome.SameLanguage, SourceLanguage: src);
 
             var restored = Glossary.Restore(r.Text, p);
@@ -171,6 +182,60 @@ public sealed class TranslationService : IAsyncDisposable
             return new TranslationResult(TranslationOutcome.Failed, Message: e.Message);
         }
     }
+
+    /// <summary>English shorthand ("lf healer pls") becomes plain English before translation.</summary>
+    private static ProtectedText WithPlainEnglish(ProtectedText p, string? detected) =>
+        detected is null or Languages.English ? p with { Text = ChatSlang.Expand(p.Text) } : p;
+
+    // ── Optional cache that survives restarts ────────────────────────────────
+
+    private static readonly TimeSpan CacheLifetime = TimeSpan.FromDays(7);
+
+    /// <summary>
+    /// Writes recent translations to disk (opt-in: the file contains other players' messages).
+    /// Entries older than 7 days are dropped.
+    /// </summary>
+    public void SaveCache(string path)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var entries = _cache.Snapshot()
+            .Where(e => e.Value.Outcome == TranslationOutcome.Translated && now - e.Value.CachedAt < CacheLifetime)
+            .Select(e => new CacheEntry(e.Key, e.Value.Text!, e.Value.SourceLanguage, e.Value.CachedAt))
+            .ToList();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, JsonSerializer.Serialize(entries, CacheJsonContext.Default.ListCacheEntry));
+    }
+
+    public void LoadCache(string path)
+    {
+        if (!File.Exists(path)) return;
+        try
+        {
+            var entries = JsonSerializer.Deserialize(File.ReadAllText(path), CacheJsonContext.Default.ListCacheEntry) ?? [];
+            var now = DateTimeOffset.UtcNow;
+            foreach (var e in entries.Where(e => now - e.SavedAt < CacheLifetime).OrderBy(e => e.SavedAt))
+                _cache.Set(e.Key, new TranslationResult(TranslationOutcome.Translated, e.Text, e.Source) { CachedAt = e.SavedAt });
+        }
+        catch (Exception e) when (e is JsonException or IOException) { }
+    }
+
+    public void ClearCache(string? path = null)
+    {
+        _cache.Clear();
+        ClearCacheFile(path);
+    }
+
+    /// <summary>Deletes the on-disk cache (when the user turns the option off) but keeps memory.</summary>
+    public void ClearCacheFile(string? path)
+    {
+        try
+        {
+            if (path is not null && File.Exists(path)) File.Delete(path);
+        }
+        catch (IOException) { }
+    }
+
+    internal sealed record CacheEntry(string Key, string Text, string? Source, DateTimeOffset SavedAt);
 
     public async ValueTask DisposeAsync()
     {
@@ -223,6 +288,11 @@ internal sealed class LruCache<TKey, TValue>(int capacity) where TKey : notnull
         }
     }
 
+    public List<KeyValuePair<TKey, TValue>> Snapshot()
+    {
+        lock (_lock) return _order.Select(n => new KeyValuePair<TKey, TValue>(n.Key, n.Value)).ToList();
+    }
+
     public void Clear()
     {
         lock (_lock)
@@ -232,3 +302,6 @@ internal sealed class LruCache<TKey, TValue>(int capacity) where TKey : notnull
         }
     }
 }
+
+[JsonSerializable(typeof(List<TranslationService.CacheEntry>))]
+internal sealed partial class CacheJsonContext : JsonSerializerContext;

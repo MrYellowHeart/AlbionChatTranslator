@@ -183,3 +183,23 @@ public sealed class DeepLProvider : ITranslationProvider
 
     public void Dispose() => _client.Dispose();
 }
+
+/// <summary>
+/// Uses <paramref name="primary"/> and, whenever it is rate-limited or unreachable, the
+/// backup for that line. Neither provider is owned; the caller disposes them.
+/// </summary>
+public sealed class FallbackProvider(ITranslationProvider primary, ITranslationProvider backup) : ITranslationProvider
+{
+    public string Name => $"{primary.Name} (backup: {backup.Name})";
+
+    public async Task<ProviderResult> TranslateAsync(string text, string? source, string target, CancellationToken ct)
+    {
+        var first = await primary.TranslateAsync(text, source, target, ct).ConfigureAwait(false);
+        if (first.Outcome == ProviderOutcome.Translated) return first;
+
+        var second = await backup.TranslateAsync(text, source, target, ct).ConfigureAwait(false);
+        return second.Outcome == ProviderOutcome.Translated ? second : first;
+    }
+
+    public void Dispose() { }
+}

@@ -16,6 +16,11 @@
         <TextBlock Style="{StaticResource Hint}" Text="• Some VPNs and ping reducers hide game traffic from Windows. Try with them off."/>
         <TextBlock Style="{StaticResource Hint}" Text="• After a big Albion patch the app may need an update; it installs updates by itself."/>
 
+        <TextBlock Text="Hotkeys (work while Albion has focus)" Foreground="#D0D0D0" FontWeight="SemiBold" Margin="0,12,0,4"/>
+        <TextBlock Style="{StaticResource Hint}" Text="Ctrl+Shift+R: reply to whoever spoke last. Type in your language, press Enter, then Ctrl+V in Albion."/>
+        <TextBlock Style="{StaticResource Hint}" Text="Ctrl+Shift+O: show or hide the see-through chat overlay."/>
+        <TextBlock Style="{StaticResource Hint}" Text="Ctrl+Shift+L: unlock the overlay to move or resize it, press again to lock."/>
+
         <TextBlock Text="Privacy" Foreground="#D0D0D0" FontWeight="SemiBold" Margin="0,12,0,4"/>
         <TextBlock Style="{StaticResource Hint}" Text="Only the text of messages that are not in your language is sent to Google Translate (or DeepL, if you choose it), over HTTPS with no cookies or account. Player names, channels, item links and anything about you are never sent; the 'Sent for translation' counter shows exactly how many lines left your PC. The app also contacts github.com to check for updates. It only reads Albion's network traffic and never changes, sends or injects anything into the game."/>
 

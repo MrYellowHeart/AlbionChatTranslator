@@ -11,6 +11,8 @@ namespace AlbionChatTranslator.Core.Settings;
 
 public enum ProviderChoice { Google, DeepL }
 
+public enum TranslateMode { Automatic, OnClick }
+
 public sealed class TabSetting
 {
     public string Name { get; set; } = string.Empty;
@@ -32,6 +34,36 @@ public sealed class AppSettings
     public int MaxLinesPerTab { get; set; } = 500;
     public List<TabSetting> Tabs { get; set; } = [];
 
+    // ── Privacy ──────────────────────────────────────────────────────────────
+
+    /// <summary>Other languages the user reads (ISO 639-1): shown as-is, never sent.</summary>
+    public List<string> ReadLanguages { get; set; } = [];
+
+    /// <summary>Channel kinds whose messages are never sent for translation (e.g. whispers).</summary>
+    public List<ChannelKind> NeverSendChannels { get; set; } = [];
+
+    /// <summary>Automatic, or only when the user clicks a message.</summary>
+    public TranslateMode Mode { get; set; } = TranslateMode.Automatic;
+
+    /// <summary>Words never translated (guild names, friends' names, local slang).</summary>
+    public List<string> CustomTerms { get; set; } = [];
+
+    /// <summary>Keep translations between sessions (stores other players' messages on disk). Off by default.</summary>
+    public bool KeepCacheOnDisk { get; set; }
+
+    /// <summary>Use DeepL for a line when Google is busy or unreachable (needs a DeepL key).</summary>
+    public bool DeepLAsBackup { get; set; } = true;
+
+    // ── Overlay ──────────────────────────────────────────────────────────────
+
+    public double OverlayOpacity { get; set; } = 0.75;
+    public bool OverlayTranslatedOnly { get; set; } = true;
+    public bool OverlayClickThrough { get; set; } = true;
+    public double OverlayLeft { get; set; } = double.NaN;
+    public double OverlayTop { get; set; } = double.NaN;
+    public double OverlayWidth { get; set; } = 520;
+    public double OverlayHeight { get; set; } = 220;
+
     public ProviderChoice Provider { get; set; } = ProviderChoice.Google;
 
     /// <summary>DeepL key encrypted with Windows DPAPI for the current user. Never stored in plain text.</summary>
@@ -46,8 +78,18 @@ public sealed class AppSettings
 
     [JsonIgnore] public bool IsFirstRun { get; private set; }
 
-    public static string DefaultDirectory => Path.Combine(
+    /// <summary>
+    /// Set ACT_DATA_DIR to keep settings and cache in one folder instead of the user profile
+    /// (portable use, testing). Windows ignores %APPDATA% overrides, so this is the way to do it.
+    /// </summary>
+    private static string? DataDirOverride => Environment.GetEnvironmentVariable("ACT_DATA_DIR") is { Length: > 0 } d ? d : null;
+
+    public static string DefaultDirectory => DataDirOverride ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AlbionChatTranslator");
+
+    /// <summary>Where the optional translation cache lives (machine-local, not roaming).</summary>
+    public static string CachePath => Path.Combine(DataDirOverride ?? Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AlbionChatTranslator"), "translation-cache.json");
 
     public static AppSettings Load(string? directory = null)
     {
@@ -154,6 +196,6 @@ public static class SecretProtector
     }
 }
 
-[JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true)]
+[JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true, NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals)]
 [JsonSerializable(typeof(AppSettings))]
 internal sealed partial class SettingsJsonContext : JsonSerializerContext;

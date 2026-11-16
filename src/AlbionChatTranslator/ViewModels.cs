@@ -57,8 +57,27 @@ public sealed class ChatEntry : Observable
     public string? SourceLanguage => _sourceLanguage;
     public string? Tooltip => _translated is null ? null : "Original: " + Original;
 
+    /// <summary>In click-to-translate mode: nothing has been sent yet.</summary>
+    public bool AwaitingClick { get; private set; }
+
+    public void MarkClickToTranslate() => SetStatus(" [translate]", awaitingClick: true);
+
+    /// <summary>The channel is excluded from translation: show it exactly as received.</summary>
+    public void MarkNotSent() => SetStatus(string.Empty, awaitingClick: false);
+
+    public void MarkPending() => SetStatus("…", awaitingClick: false);
+
+    private void SetStatus(string status, bool awaitingClick)
+    {
+        _status = status;
+        AwaitingClick = awaitingClick;
+        Raise(nameof(Tag));
+        Raise(nameof(AwaitingClick));
+    }
+
     public void Apply(TranslationResult result)
     {
+        AwaitingClick = false;
         _sourceLanguage = result.SourceLanguage;
         _translated = result.Outcome == TranslationOutcome.Translated ? result.Text : null;
         _status = result.Outcome switch
@@ -71,6 +90,17 @@ public sealed class ChatEntry : Observable
         Raise(nameof(Tag));
         Raise(nameof(IsTranslated));
         Raise(nameof(Tooltip));
+    }
+}
+
+/// <summary>A capped list of chat entries (used by each tab and by the overlay feed).</summary>
+public static class EntryList
+{
+    public static void AddCapped(this ObservableCollection<ChatEntry> list, ChatEntry entry, int maxLines)
+    {
+        list.Add(entry);
+        while (list.Count > maxLines)
+            list.RemoveAt(0);
     }
 }
 

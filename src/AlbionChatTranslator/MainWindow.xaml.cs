@@ -4,6 +4,7 @@ using AlbionChatTranslator.Core.Settings;
 using AlbionChatTranslator.Core.Translation;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -21,10 +22,17 @@ public partial class MainWindow : Window
     private readonly TranslationService _translation;
     private readonly Updater _updater = new();
     private readonly ObservableCollection<ChatTabViewModel> _tabs = [];
+    private readonly ObservableCollection<ChatEntry> _overlayFeed = [];
     private ITranslationProvider? _deepL;
     private CaptureClient? _capture;
+    private OverlayWindow? _overlay;
+    private GlobalHotkeys? _hotkeys;
+    private ReplyWindow? _reply;
+    private string? _lastForeignLanguage;
     private int _messageCount;
     private int _sentCount;
+
+    private const int OverlayLines = 60;
 
     public MainWindow()
     {
@@ -38,6 +46,9 @@ public partial class MainWindow : Window
 
         Tabs.ItemsSource = _tabs;
         ApplySettings();
+        if (_settings.KeepCacheOnDisk) _translation.LoadCache(AppSettings.CachePath);
+
+        SourceInitialized += (_, _) => RegisterHotkeys();
 
         Loaded += async (_, _) =>
         {
@@ -51,7 +62,14 @@ public partial class MainWindow : Window
         };
         Closing += async (_, _) =>
         {
+            _overlay?.Close();
             _settings.Save();
+            if (_settings.KeepCacheOnDisk)
+            {
+                try { _translation.SaveCache(AppSettings.CachePath); }
+                catch (IOException) { }
+            }
+            _hotkeys?.Dispose();
             if (_capture is not null) await _capture.DisposeAsync();
         };
         Closed += async (_, _) =>
@@ -69,21 +87,31 @@ public partial class MainWindow : Window
         Topmost = _settings.AlwaysOnTop;
         _translation.TargetLanguage = _settings.TargetLanguage;
         _translation.MinLetters = _settings.MinLetters;
+        _translation.ReadLanguages = _settings.ReadLanguages.ToHashSet();
+        Glossary.SetCustomTerms(_settings.CustomTerms);
 
         _deepL?.Dispose();
-        _deepL = null;
-        if (_settings.Provider == ProviderChoice.DeepL && _settings.DeepLKey is { Length: > 0 } key)
+        _deepL = _settings.DeepLKey is { Length: > 0 } key ? new DeepLProvider(key) : null;
+        var target = Languages.NameOf(_settings.TargetLanguage);
+        if (_settings.Provider == ProviderChoice.DeepL && _deepL is not null)
         {
-            _deepL = new DeepLProvider(key);
             _translation.Provider = _deepL;
-            TxtProvider.Text = $"DeepL → {Languages.NameOf(_settings.TargetLanguage)}";
+            TxtProvider.Text = $"DeepL → {target}";
+        }
+        else if (_settings.DeepLAsBackup && _deepL is not null)
+        {
+            _translation.Provider = new FallbackProvider(_google, _deepL);
+            TxtProvider.Text = $"Google (DeepL backup) → {target}";
         }
         else
         {
             _translation.Provider = _google;
-            TxtProvider.Text = $"Google → {Languages.NameOf(_settings.TargetLanguage)}";
+            TxtProvider.Text = $"Google → {target}";
         }
+        if (_settings.Mode == TranslateMode.OnClick) TxtProvider.Text += " · click to translate";
 
+        if (!_settings.KeepCacheOnDisk) _translation.ClearCacheFile(AppSettings.CachePath);
+        _overlay?.ApplySettings();
         RebuildTabs();
     }
 
@@ -171,15 +199,32 @@ public partial class MainWindow : Window
 
         var entry = new ChatEntry(line);
         foreach (var tab in targets) tab.Add(entry, _settings.MaxLinesPerTab);
+        _overlayFeed.AddCapped(entry, OverlayLines);
         TxtCount.Text = (++_messageCount).ToString();
 
-        _translation.Submit(line.Text, result => Dispatcher.InvokeAsync(() =>
+        if (_settings.NeverSendChannels.Contains(line.Kind))
+            entry.MarkNotSent();
+        else if (_settings.Mode == TranslateMode.OnClick)
+            entry.MarkClickToTranslate();
+        else
+            Translate(entry);
+    }
+
+    private void Translate(ChatEntry entry)
+    {
+        entry.MarkPending();
+        _translation.Submit(entry.Line.Text, result => Dispatcher.InvokeAsync(() =>
         {
             entry.Apply(result);
-            if (result.Outcome is TranslationOutcome.Busy or TranslationOutcome.Failed && result.Message is { } msg)
-                TxtActivity.Text = msg;
-            else if (result.Outcome == TranslationOutcome.Translated)
+            if (result.Outcome == TranslationOutcome.Translated)
+            {
                 TxtActivity.Text = string.Empty;
+                _lastForeignLanguage = result.SourceLanguage ?? _lastForeignLanguage;
+            }
+            else if (result.Outcome is TranslationOutcome.Busy or TranslationOutcome.Failed && result.Message is { } msg)
+            {
+                TxtActivity.Text = msg;
+            }
         }));
     }
 
@@ -207,20 +252,61 @@ public partial class MainWindow : Window
 
     private void LanguageTag_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Hyperlink { DataContext: ChatEntry { SourceLanguage: { } lang } })
-            OpenReply(lang);
+        if (sender is not Hyperlink { DataContext: ChatEntry entry }) return;
+        if (entry.AwaitingClick) Translate(entry);
+        else if (entry.SourceLanguage is { } lang) OpenReply(lang);
     }
 
-    private void BtnReply_Click(object sender, RoutedEventArgs e) => OpenReply(null);
+    private void BtnReply_Click(object sender, RoutedEventArgs e) => OpenReply(_lastForeignLanguage);
 
-    private void OpenReply(string? toLanguage) =>
-        new ReplyWindow(_translation, _settings.TargetLanguage, toLanguage) { Owner = this, Topmost = Topmost }.Show();
+    /// <summary>Opens (or reuses) the reply box, aimed at <paramref name="toLanguage"/>.</summary>
+    private void OpenReply(string? toLanguage)
+    {
+        if (_reply is { IsLoaded: true })
+        {
+            _reply.SetTarget(toLanguage);
+            _reply.BringToFront();
+            return;
+        }
+        _reply = new ReplyWindow(_translation, _settings.TargetLanguage, toLanguage) { Topmost = true };
+        _reply.Closed += (_, _) => _reply = null;
+        _reply.Show();
+        _reply.BringToFront();
+    }
+
+    // ── Overlay & hotkeys ────────────────────────────────────────────────────
+
+    private void RegisterHotkeys()
+    {
+        _hotkeys = new GlobalHotkeys(this);
+        var missing = new List<string>();
+        if (!_hotkeys.Register(ctrl: true, shift: true, alt: false, 'R', () => OpenReply(_lastForeignLanguage))) missing.Add("Ctrl+Shift+R");
+        if (!_hotkeys.Register(ctrl: true, shift: true, alt: false, 'O', ToggleOverlay)) missing.Add("Ctrl+Shift+O");
+        if (!_hotkeys.Register(ctrl: true, shift: true, alt: false, 'L', () => _overlay?.ToggleLock())) missing.Add("Ctrl+Shift+L");
+        if (missing.Count > 0)
+            TxtError.Text = $"Hotkeys already used by another app: {string.Join(", ", missing)}";
+    }
+
+    private void BtnOverlay_Click(object sender, RoutedEventArgs e) => ToggleOverlay();
+
+    private void ToggleOverlay()
+    {
+        if (_overlay is { IsVisible: true })
+        {
+            _overlay.Close();
+            return;
+        }
+        _overlay = new OverlayWindow(_settings, _overlayFeed);
+        _overlay.Closed += (_, _) => { _overlay = null; _settings.Save(); };
+        _overlay.Show();
+    }
 
     // ── Toolbar ──────────────────────────────────────────────────────────────
 
     private void BtnClear_Click(object sender, RoutedEventArgs e)
     {
         foreach (var tab in _tabs) tab.Entries.Clear();
+        _overlayFeed.Clear();
         _messageCount = 0;
         TxtCount.Text = "0";
         TxtError.Text = string.Empty;
@@ -228,7 +314,7 @@ public partial class MainWindow : Window
 
     private void BtnSettings_Click(object sender, RoutedEventArgs e)
     {
-        var window = new SettingsWindow(_settings) { Owner = this };
+        var window = new SettingsWindow(_settings, () => _translation.ClearCache(AppSettings.CachePath)) { Owner = this };
         if (window.ShowDialog() == true)
         {
             _settings.Save();

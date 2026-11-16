@@ -16,11 +16,13 @@ Updates install themselves.
 ## Features
 
 - **Google Translate quality** for Say, Whisper, Party, Guild, Alliance and (optionally) global channels, in every language Google supports.
-- **Reply in their language**: click the `(Spanish)` tag after a message, type in your language, copy the translation into Albion.
-- **Albion-aware**: city names and abbreviations (BW, FS, Thet, Brec…), tiers (`t8.3`, `@2`), item links and gamer words (gank, zerg, dps…) are never translated.
-- **Smart about chat**: English chat shorthand (`lf healer`, `wts`, `gg wp`) and your own language are recognised and left alone; short lines like "ok" are skipped; repeated spam is translated once and cached.
-- **Light**: about 150 MB of RAM, nothing to download after install, translations in about 0.3–1 s.
-- Optional **DeepL** mode with your own free key.
+- **Quick replies**: press **Ctrl+Shift+R** in game (or click the `(Spanish)` tag after a message), type in your language, press **Enter**. The translation is on your clipboard; paste it into Albion with Ctrl+V. It's aimed at whoever spoke to you last.
+- **Overlay**: **Ctrl+Shift+O** shows a see-through chat feed on top of the game. Clicks pass straight through to Albion; **Ctrl+Shift+L** unlocks it to move or resize. Opacity and "translated messages only" are in Settings.
+- **Understands gamer shorthand**: `lf healer for hg pls` is turned into plain English before translating, so it becomes *"procurando um curandeiro para HG"* instead of *"Se curandeiro…"*. `party` means *group*, `wts` means *want to sell*, and so on.
+- **Albion-aware**: city names and abbreviations (BW, FS, Thet, Brec…), tiers (`t8.3`, `@2`), item links and gamer words (gank, zerg, dps…) are never translated, plus any words you add yourself (guild names, friends' names).
+- **Smart about chat**: your own language and English shorthand are recognised and left alone; short lines like "ok" are skipped; repeated spam is translated once and cached.
+- **Light**: about 160 MB of RAM, nothing to download after install, translations in about 0.3–1 s.
+- Optional **DeepL** with your own free key, as the main translator or as an automatic backup when Google is busy.
 
 ### Languages
 
@@ -30,8 +32,10 @@ You can read chat in, and reply into, Arabic, Chinese, Czech, Danish, Dutch, Eng
 
 Translation is done by Google Translate (or DeepL, if you choose it). The app is built to send as little as possible:
 
-- **Only the message text** of lines that are *not* in your language is sent. Never player names, channels, guilds, item links, your account, or anything else about you.
-- **Most chat never leaves your PC.** Lines in your own language are recognised locally and not sent; neither are short lines ("gg", "ok"), item links, numbers or repeats (answered from a cache). The status bar shows exactly how many lines were sent.
+- **Only the message text** of lines that are *not* in your languages is sent. Never player names, channels, guilds, item links, your account, or anything else about you.
+- **Most chat never leaves your PC.** Lines in your own language, and in any other languages you tick under *I can also read*, are recognised locally and not sent; neither are short lines ("gg", "ok"), item links, numbers or repeats (answered from a cache). The status bar shows exactly how many lines were sent.
+- **You decide what is sent.** Exclude whole channels (whispers, guild, party…) in Settings, or switch to *only when I click [translate]* so nothing is sent unless you ask.
+- **Nothing is written to disk** unless you turn on *Remember translations for 7 days* (off by default, because it stores other players' messages). *Forget all translations* deletes it.
 - **Albion terms are masked.** City names, abbreviations, tiers and item links are replaced with placeholders before sending and put back afterwards.
 - **No tracking.** HTTPS POST (text never appears in a URL), no cookies, no account, a generic browser user agent, no telemetry or analytics, no chat logs on disk.
 - **If Google rate-limits**, the app backs off on its own (30 s up to 10 min) instead of retrying in a loop.
@@ -41,8 +45,13 @@ Translation is done by Google Translate (or DeepL, if you choose it). The app is
 
 Google's endpoint is the free one Google's own web widgets use. It needs no key, but it isn't an official API, so Google could limit or change it; DeepL with your own key is the fallback.
 
+### Portable use
+
+Set the environment variable `ACT_DATA_DIR` to a folder to keep settings and the optional cache there instead of in your Windows profile.
+
 ## Troubleshooting
 
+- **A hotkey does nothing**: another app may already use it; the status bar says which. The buttons do the same thing.
 - **Nothing shows up**: make sure the status says *Capturing*, then send a message in Say chat. VPNs and ping reducers (ExitLag etc.) can hide game traffic from Windows; try with them off.
 - **"Administrator permission was declined"**: click Start again and choose *Yes*. If your Windows account isn't an administrator, an admin account has to approve it; signing in as a *different* user for the prompt is not supported.
 - **Windows SmartScreen warning**: release builds are not code-signed yet. Check the file against `SHA256SUMS.txt` in the release, or build it yourself (below).

@@ -40,10 +40,22 @@ public static partial class Glossary
         "debuff", "buff", "nerf", "kiting", "kite", "KOS", "ZvZ",
     ];
 
-    private static readonly Regex TermRegex = new(
-        string.Join("|", Terms.OrderByDescending(t => t.Length)
+    private static readonly Regex TermRegex = BuildTermRegex(Terms, RegexOptions.Compiled);
+
+    // Words the user added in Settings (guild names, friends' names, local slang...).
+    private static volatile Regex? _customRegex;
+
+    /// <summary>Extra words that are never translated, e.g. guild or player names.</summary>
+    public static void SetCustomTerms(IEnumerable<string> terms)
+    {
+        var clean = terms.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        _customRegex = clean.Count == 0 ? null : BuildTermRegex(clean, RegexOptions.None);
+    }
+
+    private static Regex BuildTermRegex(IEnumerable<string> terms, RegexOptions extra) => new(
+        string.Join("|", terms.OrderByDescending(t => t.Length)
             .Select(t => $@"(?<![\p{{L}}\p{{N}}]){Regex.Escape(t)}(?![\p{{L}}\p{{N}}])")),
-        RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | extra);
 
     // Tiers and enchantments: "T8", "t4.1", "8.3", "@2"
     [GeneratedRegex(@"(?<![\p{L}\p{N}])(?:[Tt][1-8](?:\.[0-4])?|[1-8]\.[0-4]|@[1-4])(?![\p{L}\p{N}])")]
@@ -76,6 +88,7 @@ public static partial class Glossary
         }
 
         string masked = sb.ToString();
+        if (_customRegex is { } custom) masked = custom.Replace(masked, m => Keep(m.Value));
         masked = TermRegex.Replace(masked, m => Keep(m.Value));
         masked = TierRegex().Replace(masked, m => Keep(m.Value));
         return new ProtectedText(masked, originals);
