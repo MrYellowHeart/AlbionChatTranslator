@@ -176,11 +176,13 @@ public sealed class ChatEventParser
         return new ChatLine(_clock.GetLocalNow(), KnownChannels.Say, ChannelKind.Say, sender, Truncate(text));
     }
 
-    // ChatWhisper: [0] sender, [2] text
+    // ChatWhisper: [0] the other player, [3] text (seen in game, Nov 2026: [0]=text [3]=text [4]=byte).
+    // Older clients sent the text in [2].
     private ChatLine? ParseWhisper(Dictionary<byte, object> p)
     {
         if (!ParamReader.TryGetString(p, 0, out var sender)) return null;
-        if (!ParamReader.TryGetString(p, 2, out var text) || !IsUsableText(text)) return null;
+        if (!(ParamReader.TryGetString(p, 3, out var text) && IsUsableText(text))
+            && !(ParamReader.TryGetString(p, 2, out text) && IsUsableText(text))) return null;
         return new ChatLine(_clock.GetLocalNow(), KnownChannels.Whisper, ChannelKind.Whisper, sender, Truncate(text));
     }
 

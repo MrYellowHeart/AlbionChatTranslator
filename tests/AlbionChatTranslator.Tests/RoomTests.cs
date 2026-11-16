@@ -139,3 +139,20 @@ public class TabShowsTests
         Assert.True(KnownChannels.TabShows(General, 27));   // zone chat
     }
 }
+
+public class WhisperTests
+{
+    [Theory]
+    [InlineData((byte)3)] // layout seen in game, Nov 2026
+    [InlineData((byte)2)] // older layout
+    public void Whispers_are_read(byte textKey)
+    {
+        var parser = new ChatEventParser();
+        var lines = new List<ChatLine>();
+        parser.LineReceived += lines.Add;
+        parser.Handle(new EventPacket((short)EventCodes.ChatWhisper, new Dictionary<byte, object> { [0] = "Somebody", [textKey] = "oi, voce vende a bolsa?", [4] = (byte)0 }));
+
+        var line = Assert.Single(lines);
+        Assert.Equal((KnownChannels.Whisper, ChannelKind.Whisper, "Somebody", "oi, voce vende a bolsa?"), (line.ChannelId, line.Kind, line.Sender, line.Text));
+    }
+}
