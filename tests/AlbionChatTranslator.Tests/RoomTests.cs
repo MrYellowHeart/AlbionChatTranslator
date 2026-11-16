@@ -1,0 +1,83 @@
+using AlbionChatTranslator.Core.Chat;
+using AlbionChatTranslator.Core.Ipc;
+using AlbionChatTranslator.Core.Settings;
+using StatisticsAnalysisTool.Network;
+
+namespace AlbionChatTranslator.Tests;
+
+/// <summary>Chat rooms, using the event layouts recorded from the live game (Nov 2026).</summary>
+public class RoomTests
+{
+    private static (ChatEventParser Parser, List<ChatLine> Lines, List<(int Room, int Channel)> Joins) Create()
+    {
+        var parser = new ChatEventParser();
+        var lines = new List<ChatLine>();
+        var joins = new List<(int, int)>();
+        parser.LineReceived += lines.Add;
+        parser.RoomJoined += (r, c) => joins.Add((r, c));
+        return (parser, lines, joins);
+    }
+
+    private static EventPacket Packet(EventCodes code, Dictionary<byte, object> p) => new((short)code, p);
+
+    [Fact]
+    public void Joined_chat_channel_sorts_the_room_into_its_channel()
+    {
+        var (parser, lines, joins) = Create();
+        // As logged: Help = channel 5 in room 21, Recruit = 2 in room 18, guild chat = 24.
+        parser.Handle(Packet(EventCodes.JoinedChatChannel, new() { [0] = 5, [1] = 21 }));
+        parser.Handle(Packet(EventCodes.JoinedChatChannel, new() { [0] = 2, [1] = 18 }));
+        parser.Handle(Packet(EventCodes.JoinedChatChannel, new() { [0] = KnownChannels.Guild, [1] = 640 }));
+        parser.Handle(Packet(EventCodes.ChatMessage, new() { [0] = 21, [1] = "Ana", [2] = "how do I get to Caerleon", [3] = (byte)0 }));
+        parser.Handle(Packet(EventCodes.ChatMessage, new() { [0] = 18, [1] = "Bo", [2] = "recruiting for zvz", [3] = (byte)0, [5] = "abcdefghijklmnop" }));
+        parser.Handle(Packet(EventCodes.ChatMessage, new() { [0] = 640, [1] = "Cy", [2] = "guild meeting now", [3] = (byte)0 }));
+
+        Assert.Equal([5, 2, KnownChannels.Guild], lines.Select(l => l.ChannelId));
+        Assert.All(lines, l => Assert.Null(l.Room));
+        Assert.Equal(ChannelKind.Guild, lines[2].Kind);
+        Assert.Equal([(21, 5), (18, 2), (640, KnownChannels.Guild)], joins);
+    }
+
+    [Fact]
+    public void Packed_new_chat_channels_are_read()
+    {
+        var (parser, lines, joins) = Create();
+        // As logged: [0]=byte[]{27,0,0,0} [1]=short[]{479}; plus a second pair.
+        parser.Handle(Packet(EventCodes.NewChatChannels, new() { [0] = new byte[] { 27, 0, 0, 0, 3, 0, 0, 0 }, [1] = new short[] { 479, 19 } }));
+        parser.Handle(Packet(EventCodes.ChatMessage, new() { [0] = 19, [1] = "Di", [2] = "lf healer for hce", [3] = (byte)0 }));
+
+        Assert.Equal([(479, 27), (19, 3)], joins);
+        Assert.Equal(3, lines.Single().ChannelId);
+    }
+
+    [Fact]
+    public void Unassigned_rooms_say_so_and_repeat_joins_are_quiet()
+    {
+        var (parser, lines, joins) = Create();
+        parser.Handle(Packet(EventCodes.ChatMessage, new() { [0] = 22, [1] = "Ed", [2] = "anyone around", [3] = (byte)0 }));
+        Assert.Equal(22, lines[0].Room);
+        Assert.Equal(ChannelKind.Other, lines[0].Kind);
+
+        parser.Handle(Packet(EventCodes.JoinedChatChannel, new() { [0] = 7, [1] = 22 }));
+        parser.Handle(Packet(EventCodes.JoinedChatChannel, new() { [0] = 7, [1] = 22 }));
+        Assert.Single(joins);
+    }
+
+    [Fact]
+    public void Room_assignments_cross_the_pipe_and_are_remembered()
+    {
+        var msg = PipeProtocol.TryDeserialize(PipeProtocol.Serialize(new PipeMessage { Type = PipeMessage.TypeRoom, Room = 18, Channel = 2 }));
+        Assert.Equal((18, 2), (msg!.Room, msg.Channel));
+
+        var dir = Path.Combine(Path.GetTempPath(), "act-test-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var s = new AppSettings();
+            s.Rooms[18] = 2;
+            s.Rooms[21] = 5;
+            s.Save(dir);
+            Assert.Equal(new Dictionary<int, int> { [18] = 2, [21] = 5 }, AppSettings.Load(dir).Rooms);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+}

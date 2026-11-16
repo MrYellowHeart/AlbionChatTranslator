@@ -158,6 +158,7 @@ The app only **reads** network traffic, like other Albion community tools. It do
 - **Windows SmartScreen warns about the installer.** Releases are not code-signed yet. Check the file hash (see above), choose *More info → Run anyway*, or build it yourself.
 - **A hotkey does nothing.** Another program uses it; the app says which. Use the buttons instead.
 - **A line shows untranslated with "downloading offline pack".** That language's pack is still downloading (about 110 MB, once). Tick the languages you see in chat in Settings so they are ready before you play.
+- **Chat is in the wrong tab, or a tab stays empty.** The game says which tab each chat room belongs to when you log in. If the app was started after that, change character once while it is capturing; it remembers from then on. Channels the game shows in none of your tabs are hidden in the app too.
 - **After a big Albion update** chat may stop appearing until the app updates itself.
 
 ## For developers

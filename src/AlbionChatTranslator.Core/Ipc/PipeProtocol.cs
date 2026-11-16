@@ -16,12 +16,16 @@ public sealed record PipeMessage
     public const string TypeHeartbeat = "hb";
     /// <summary>Technical note for the optional diagnostic log (channel numbers, never message text).</summary>
     public const string TypeDiagnostic = "diag";
+    /// <summary>The game assigned a chat room to a chat-settings channel.</summary>
+    public const string TypeRoom = "room";
 
     public required string Type { get; init; }
     public ChatLine? Line { get; init; }
     public List<ChatTab>? Tabs { get; init; }
     public string? Status { get; init; }
     public bool Ok { get; init; } = true;
+    public int? Room { get; init; }
+    public int? Channel { get; init; }
 }
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,

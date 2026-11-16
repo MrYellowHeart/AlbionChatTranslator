@@ -77,8 +77,8 @@ public class ChatEventParserTests
         parser.Handle(Packet(EventCodes.NewChatChannels, new() { [0] = KnownChannels.Guild, [1] = (short)2028 }));
 
         Assert.Equal(2, lines.Count); // unannounced channels are still delivered (the UI puts them in the first tab)
-        Assert.Single(notes, n => n.Contains("unannounced runtime channel 2028")); // not repeated
-        Assert.Single(notes, n => n.Contains("2028 -> tab channel 24"));
+        Assert.Single(notes, n => n.Contains("chat in room 2028")); // not repeated
+        Assert.Single(notes, n => n.Contains("room 2028 -> channel 24"));
         Assert.DoesNotContain(notes, n => n.Contains("secret") || n.Contains("Zed"));
     }
 

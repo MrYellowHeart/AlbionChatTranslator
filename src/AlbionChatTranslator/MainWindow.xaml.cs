@@ -167,6 +167,7 @@ public partial class MainWindow : Window
         var client = new CaptureClient();
         client.LineReceived += line => Dispatcher.InvokeAsync(() => OnChatLine(line));
         client.TabsReceived += tabs => Dispatcher.InvokeAsync(() => OnTabsFromGame(tabs));
+        client.RoomJoined += (room, channel) => Dispatcher.InvokeAsync(() => OnRoomJoined(room, channel));
         client.Diagnostic += note => DiagnosticLog.Write($"capture: {note}");
         client.StatusChanged += (text, ok) => Dispatcher.InvokeAsync(() =>
         {
@@ -218,25 +219,59 @@ public partial class MainWindow : Window
         RebuildTabs();
     }
 
+    private bool _roomsSavePending;
+
+    /// <summary>The game said which channel a chat room belongs to; remember it for next time.</summary>
+    private void OnRoomJoined(int room, int channel)
+    {
+        if (_settings.Rooms.TryGetValue(room, out int old) && old == channel) return;
+        _settings.Rooms[room] = channel;
+        if (_roomsSavePending) return;
+        _roomsSavePending = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            _roomsSavePending = false;
+            _settings.Save();
+        }, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
     private void OnChatLine(ChatLine line)
     {
+        // A room the game hasn't assigned this session: use what it said last time.
+        bool known = true;
+        if (line.Room is int room)
+        {
+            if (_settings.Rooms.TryGetValue(room, out int channel))
+                line = line with { ChannelId = channel, Kind = KnownChannels.KindOf(channel), Room = null };
+            else
+                known = false;
+        }
+
+        // Exactly like the game: a message shows in every tab whose channel list includes its channel.
         var targets = _settings.Tabs.Count == 0
             ? _tabs.Where(t => t.Name == FallbackTabName).ToList()
             : _settings.Tabs.Where(t => t.Enabled && t.ChannelIds.Contains(line.ChannelId))
                 .Select(t => _tabs.FirstOrDefault(vm => vm.Name.Equals(t.Name, StringComparison.OrdinalIgnoreCase)))
                 .OfType<ChatTabViewModel>().ToList();
 
-        bool unsorted = targets.Count == 0;
-        if (unsorted)
+        bool unsorted = false;
+        if (targets.Count == 0)
         {
-            // A channel no tab lists (often guild/alliance chat when capture started after login):
-            // show it in the first tab rather than losing it.
+            if (known)
+            {
+                // The game doesn't show this channel in any of your tabs, so neither does the app
+                // (and nothing is translated or sent).
+                DiagnosticLog.Write($"line channel={line.ChannelId} kind={line.Kind} -> hidden (in no shown tab, like the game)");
+                return;
+            }
+            // A room we have never seen assigned: show it in the first tab rather than losing it.
             if (_tabs.FirstOrDefault() is { } first) targets.Add(first);
             else return;
+            unsorted = true;
             if (!_unsortedHintShown)
             {
                 _unsortedHintShown = true;
-                TxtActivity.Text = "Some chat isn't sorted into its tab yet (shown in the first tab). Change character or log in again while capturing to fix that.";
+                TxtActivity.Text = "Some chat can't be sorted into its tab yet (shown in the first tab). Change character once while capturing; after that the app remembers.";
             }
         }
 

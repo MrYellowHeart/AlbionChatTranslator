@@ -48,6 +48,12 @@ public sealed class AppSettings
     public int MaxLinesPerTab { get; set; } = 500;
     public List<TabSetting> Tabs { get; set; } = [];
 
+    /// <summary>
+    /// Chat room number -> chat-settings channel, as the game last announced it. Kept so chat is
+    /// sorted correctly even when capture starts after logging in; the game's next announcement wins.
+    /// </summary>
+    public Dictionary<int, int> Rooms { get; set; } = new();
+
     // ── Privacy ──────────────────────────────────────────────────────────────
 
     /// <summary>Other languages the user reads (ISO 639-1): shown as-is, never sent.</summary>

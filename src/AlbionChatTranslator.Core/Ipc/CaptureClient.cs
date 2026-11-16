@@ -22,6 +22,7 @@ public sealed class CaptureClient : IAsyncDisposable
     public event Action<IReadOnlyList<ChatTab>>? TabsReceived;
     public event Action<string, bool>? StatusChanged;
     public event Action<string>? Diagnostic;
+    public event Action<int, int>? RoomJoined;
     public event Action? Stopped;
 
     public bool IsRunning => _readLoop is { IsCompleted: false };
@@ -120,6 +121,9 @@ public sealed class CaptureClient : IAsyncDisposable
                             break;
                         case PipeMessage.TypeDiagnostic when msg.Status is { } note:
                             Diagnostic?.Invoke(note);
+                            break;
+                        case PipeMessage.TypeRoom when msg is { Room: int room, Channel: int channel }:
+                            RoomJoined?.Invoke(room, channel);
                             break;
                     }
                 }

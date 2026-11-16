@@ -17,12 +17,17 @@ public enum ChannelKind
 /// The chat-settings channel type ID (the IDs that appear in each tab's channel list),
 /// so the UI can decide which tabs show the message.
 /// </param>
+/// <param name="Room">
+/// Set only when the game hasn't said (this session) which channel the message's chat room
+/// belongs to: the room number, so the app can use what it learned in an earlier session.
+/// </param>
 public sealed record ChatLine(
     DateTimeOffset Timestamp,
     int ChannelId,
     ChannelKind Kind,
     string Sender,
-    string Text);
+    string Text,
+    int? Room = null);
 
 /// <summary>A chat tab as configured in the game client.</summary>
 /// <param name="GameKey">The game's built-in tab key (e.g. "COMBAT") for default tabs; null for tabs the player named.</param>

@@ -31,6 +31,9 @@ public sealed class ChatEventParser
     public event Action<ChatLine>? LineReceived;
     public event Action<IReadOnlyList<ChatTab>>? TabsReceived;
 
+    /// <summary>The game said which chat-settings channel a chat room belongs to: (room, channel).</summary>
+    public event Action<int, int>? RoomJoined;
+
     /// <summary>Technical notes for the optional diagnostic log: channel numbers only, never text or names.</summary>
     public event Action<string>? Diagnostic;
 
@@ -67,7 +70,15 @@ public sealed class ChatEventParser
                 Diagnostic?.Invoke($"event NewChatChannels: {EventShape.Describe(packet.Parameters)}");
                 ParseChannelAnnouncement(packet.Parameters);
                 break;
-            case EventCodes.JoinedChatChannel or EventCodes.LeftChatChannel or EventCodes.RemovedChatChannel:
+            case EventCodes.JoinedChatChannel:
+                Diagnostic?.Invoke($"event JoinedChatChannel: {EventShape.Describe(packet.Parameters)}");
+                // [0] chat-settings channel, [1] room number used by ChatMessage (seen in game, Nov 2026).
+                if (ParamReader.TryGetInt(packet.Parameters, 0, out int channel) && ParamReader.TryGetInt(packet.Parameters, 1, out int room))
+                    MapRoom(room, channel);
+                else
+                    Diagnostic?.Invoke("JoinedChatChannel did not match the expected layout ([0] channel, [1] room); not used");
+                break;
+            case EventCodes.LeftChatChannel or EventCodes.RemovedChatChannel:
                 Diagnostic?.Invoke($"event {(EventCodes)packet.EventCode}: {EventShape.Describe(packet.Parameters)}");
                 break;
             case EventCodes.UpdateChatSettings:
@@ -98,6 +109,7 @@ public sealed class ChatEventParser
         if (string.IsNullOrWhiteSpace(sender)) return null;
 
         int channelId;
+        int? room = null;
         ChannelKind kind;
         lock (_lock)
         {
@@ -115,10 +127,11 @@ public sealed class ChatEventParser
                 else
                 {
                     channelId = runtimeId;
+                    room = runtimeId;
                     if (_reportedUnknown.Add(runtimeId))
-                        Diagnostic?.Invoke($"chat on unannounced runtime channel {runtimeId} (log in or change character while capturing so the game announces it)");
+                        Diagnostic?.Invoke($"chat in room {runtimeId}, which the game hasn't assigned to a channel this session");
                 }
-                kind = KnownChannels.KindOf(channelId);
+                kind = room is null ? KnownChannels.KindOf(channelId) : ChannelKind.Other;
             }
             else
             {
@@ -126,7 +139,7 @@ public sealed class ChatEventParser
             }
         }
 
-        return new ChatLine(_clock.GetLocalNow(), channelId, kind, sender, Truncate(text));
+        return new ChatLine(_clock.GetLocalNow(), channelId, kind, sender, Truncate(text), room);
     }
 
     // ChatSay: [0] sender, [1] text, [6] true for emotes
@@ -149,25 +162,46 @@ public sealed class ChatEventParser
     // NewChatChannels: [0] chat-settings channel ID, [1] key (Byte = global, other integer = runtime ID)
     private void ParseChannelAnnouncement(Dictionary<byte, object> p)
     {
+        // Current layout (seen in game, Nov 2026): [0] byte[] holding little-endian Int32 channel IDs,
+        // [1] the matching room numbers, e.g. [0]={27,0,0,0} [1]={479}.
+        if (p.TryGetValue(0, out var packed) && packed is byte[] bytes && p.TryGetValue(1, out var roomsObj))
+        {
+            var rooms = ParamReader.ToIntList(roomsObj);
+            if (bytes.Length % 4 == 0 && rooms.Count == bytes.Length / 4 && roomsObj is not string)
+            {
+                for (int i = 0; i < rooms.Count; i++)
+                    MapRoom(rooms[i], BitConverter.ToInt32(bytes, i * 4));
+                return;
+            }
+        }
+
+        // Older layout: [0] channel, [1] key (Byte = global, other integer = room).
         if (!ParamReader.TryGetInt(p, 0, out int channelId) || channelId < 0 || !p.TryGetValue(1, out var key))
         {
-            Diagnostic?.Invoke("NewChatChannels did not match the expected layout ([0] channel, [1] key); not used");
+            Diagnostic?.Invoke("NewChatChannels did not match a known layout; not used");
             return;
         }
 
+        if (key is byte globalKey)
+        {
+            lock (_lock) _globalChannels[globalKey] = channelId;
+            Diagnostic?.Invoke($"global channel {globalKey} -> tab channel {channelId}");
+        }
+        else if (ParamReader.TryToInt(key, out int runtimeId))
+        {
+            MapRoom(runtimeId, channelId);
+        }
+    }
+
+    private void MapRoom(int room, int channel)
+    {
         lock (_lock)
         {
-            if (key is byte globalKey)
-            {
-                _globalChannels[globalKey] = channelId;
-                Diagnostic?.Invoke($"global channel {globalKey} -> tab channel {channelId}");
-            }
-            else if (ParamReader.TryToInt(key, out int runtimeId))
-            {
-                _dynamicChannels[runtimeId] = channelId;
-                Diagnostic?.Invoke($"runtime channel {runtimeId} -> tab channel {channelId}");
-            }
+            if (_dynamicChannels.TryGetValue(room, out int old) && old == channel) return;
+            _dynamicChannels[room] = channel;
         }
+        Diagnostic?.Invoke($"room {room} -> channel {channel}");
+        RoomJoined?.Invoke(room, channel);
     }
 
     private void LogShapeOnce(string id, string label, IReadOnlyDictionary<byte, object> p, params byte[] hidden)
