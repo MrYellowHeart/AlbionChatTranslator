@@ -1,4 +1,5 @@
 using AlbionChatTranslator.Core.Chat;
+using StatisticsAnalysisTool.Network;
 using AlbionChatTranslator.Core.Settings;
 using AlbionChatTranslator.Core.Translation;
 
@@ -87,39 +88,69 @@ public class LanguagePlanTests
 public class TabDefaultsTests
 {
     [Fact]
-    public void Combat_tab_is_hidden_when_first_seen_and_others_shown()
+    public void Combat_tab_is_never_listed()
     {
         var s = new AppSettings();
         s.MergeTabs([new ChatTab("General", [23], "GENERAL"), new ChatTab("Combat", [36], "COMBAT")]);
-        Assert.True(s.Tabs.Single(t => t.Name == "General").Enabled);
-        Assert.False(s.Tabs.Single(t => t.Name == "Combat").Enabled);
+        Assert.Equal(["General"], s.Tabs.Select(t => t.Name));
+        Assert.True(s.Tabs[0].Enabled);
 
-        // The user's choice wins afterwards.
-        s.Tabs.Single(t => t.Name == "Combat").Enabled = true;
+        // The user's choice on other tabs is kept.
+        s.Tabs[0].Enabled = false;
         s.MergeTabs([new ChatTab("General", [23], "GENERAL"), new ChatTab("Combat", [36], "COMBAT")]);
-        Assert.True(s.Tabs.Single(t => t.Name == "Combat").Enabled);
+        Assert.False(s.Tabs[0].Enabled);
     }
 
     [Fact]
-    public void Upgrading_hides_combat_once()
+    public void Upgrading_removes_a_saved_combat_tab()
     {
         var dir = Path.Combine(Path.GetTempPath(), "act-test-" + Guid.NewGuid().ToString("N"));
         try
         {
             Directory.CreateDirectory(dir);
             File.WriteAllText(Path.Combine(dir, "settings.json"),
-                """{"Version":2,"TargetLanguage":"en","Tabs":[{"Name":"General","ChannelIds":[23],"Enabled":true},{"Name":"Combat","ChannelIds":[36],"Enabled":true}]}""");
+                """{"Version":3,"TargetLanguage":"en","Tabs":[{"Name":"General","ChannelIds":[23],"Enabled":true,"GameKey":"GENERAL"},{"Name":"Combat","ChannelIds":[36],"Enabled":false,"GameKey":"COMBAT"}]}""");
             var s = AppSettings.Load(dir);
-            Assert.Equal(AppSettings.CurrentVersion, s.Version);
-            Assert.False(s.Tabs.Single(t => t.Name == "Combat").Enabled);
-            Assert.True(s.Tabs.Single(t => t.Name == "General").Enabled);
-
-            // Turned back on and saved: it stays on.
-            s.Tabs.Single(t => t.Name == "Combat").Enabled = true;
-            s.Save(dir);
-            Assert.True(AppSettings.Load(dir).Tabs.Single(t => t.Name == "Combat").Enabled);
+            Assert.Equal(["General"], s.Tabs.Select(t => t.Name));
         }
         finally { Directory.Delete(dir, true); }
+    }
+}
+
+public class EventShapeTests
+{
+    [Fact]
+    public void Layout_is_logged_without_names_or_text()
+    {
+        var p = new Dictionary<byte, object>
+        {
+            [0] = 18,
+            [1] = "SomePlayer",
+            [2] = "hello there",
+            [3] = (byte)5,
+            [4] = new object[] { "@CHAT_CHANNEL_HELP", (short)7, "Guild Name" },
+            [252] = (short)99,
+        };
+        var shape = EventShape.Describe(p, 1, 2);
+        Assert.Equal("""[0]=int 18 [1]=text(10) [2]=text(11) [3]=byte 5 [4]=object[](3){"@CHAT_CHANNEL_HELP", short 7, text(10)}""", shape);
+        Assert.DoesNotContain("SomePlayer", shape);
+        Assert.DoesNotContain("Guild", shape);
+    }
+
+    [Fact]
+    public void Channel_events_and_first_messages_reach_the_diagnostic_log()
+    {
+        var parser = new ChatEventParser();
+        var notes = new List<string>();
+        parser.Diagnostic += notes.Add;
+        parser.Handle(new EventPacket((short)EventCodes.JoinedChatChannel, new Dictionary<byte, object> { [0] = 18, [1] = "@CHAT_CHANNEL_HELP" }));
+        var msg = new Dictionary<byte, object> { [0] = 18, [1] = "Ana", [2] = "alguem ajuda" };
+        parser.Handle(new EventPacket((short)EventCodes.ChatMessage, msg));
+        parser.Handle(new EventPacket((short)EventCodes.ChatMessage, msg));
+
+        Assert.Contains(notes, n => n.StartsWith("event JoinedChatChannel: [0]=int 18 [1]=\"@CHAT_CHANNEL_HELP\"", StringComparison.Ordinal));
+        Assert.Single(notes, n => n.StartsWith("first ChatMessage on channel 18", StringComparison.Ordinal));
+        Assert.DoesNotContain(notes, n => n.Contains("Ana") || n.Contains("alguem"));
     }
 }
 

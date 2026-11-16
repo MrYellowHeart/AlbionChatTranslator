@@ -18,6 +18,7 @@ public sealed class ChatEventParser
     // used as-is unless NewChatChannels announces a different mapping.
     private readonly Dictionary<int, int> _globalChannels = new();
     private readonly HashSet<int> _reportedUnknown = [];
+    private readonly HashSet<string> _shapesLogged = [];
 
     // ChatMessage [0] runtime ID (guild/alliance/party/...) -> chat-settings channel ID.
     // Runtime IDs are reassigned every session, so this is never persisted.
@@ -39,6 +40,9 @@ public sealed class ChatEventParser
         EventCodes.ChatSay,
         EventCodes.ChatWhisper,
         EventCodes.NewChatChannels,
+        EventCodes.JoinedChatChannel,
+        EventCodes.LeftChatChannel,
+        EventCodes.RemovedChatChannel,
         EventCodes.UpdateChatSettings,
     ];
 
@@ -59,8 +63,15 @@ public sealed class ChatEventParser
             case EventCodes.ChatMessage: Emit(ParseChannelMessage(packet.Parameters)); break;
             case EventCodes.ChatSay: Emit(ParseSay(packet.Parameters)); break;
             case EventCodes.ChatWhisper: Emit(ParseWhisper(packet.Parameters)); break;
-            case EventCodes.NewChatChannels: ParseChannelAnnouncement(packet.Parameters); break;
+            case EventCodes.NewChatChannels:
+                Diagnostic?.Invoke($"event NewChatChannels: {EventShape.Describe(packet.Parameters)}");
+                ParseChannelAnnouncement(packet.Parameters);
+                break;
+            case EventCodes.JoinedChatChannel or EventCodes.LeftChatChannel or EventCodes.RemovedChatChannel:
+                Diagnostic?.Invoke($"event {(EventCodes)packet.EventCode}: {EventShape.Describe(packet.Parameters)}");
+                break;
             case EventCodes.UpdateChatSettings:
+                LogShapeOnce("UpdateChatSettings", "event UpdateChatSettings", packet.Parameters);
                 var tabs = ParseTabs(packet.Parameters);
                 if (tabs.Count > 0)
                     TabsReceived?.Invoke(tabs);
@@ -78,6 +89,8 @@ public sealed class ChatEventParser
     private ChatLine? ParseChannelMessage(Dictionary<byte, object> p)
     {
         if (!p.TryGetValue(0, out var channelObj)) return null;
+        // Layout of the first message on each channel ([1] sender and [2] text are masked).
+        LogShapeOnce($"msg:{channelObj?.GetType().Name}:{channelObj}", $"first ChatMessage on channel {channelObj} ({channelObj?.GetType().Name})", p, 1, 2);
         if (!ParamReader.TryGetString(p, 2, out var text) || !IsUsableText(text)) return null;
         ParamReader.TryGetString(p, 1, out var sender);
 
@@ -136,8 +149,11 @@ public sealed class ChatEventParser
     // NewChatChannels: [0] chat-settings channel ID, [1] key (Byte = global, other integer = runtime ID)
     private void ParseChannelAnnouncement(Dictionary<byte, object> p)
     {
-        if (!ParamReader.TryGetInt(p, 0, out int channelId) || channelId < 0) return;
-        if (!p.TryGetValue(1, out var key)) return;
+        if (!ParamReader.TryGetInt(p, 0, out int channelId) || channelId < 0 || !p.TryGetValue(1, out var key))
+        {
+            Diagnostic?.Invoke("NewChatChannels did not match the expected layout ([0] channel, [1] key); not used");
+            return;
+        }
 
         lock (_lock)
         {
@@ -152,6 +168,16 @@ public sealed class ChatEventParser
                 Diagnostic?.Invoke($"runtime channel {runtimeId} -> tab channel {channelId}");
             }
         }
+    }
+
+    private void LogShapeOnce(string id, string label, IReadOnlyDictionary<byte, object> p, params byte[] hidden)
+    {
+        if (Diagnostic is null) return;
+        lock (_lock)
+        {
+            if (_shapesLogged.Count >= 200 || !_shapesLogged.Add(id)) return;
+        }
+        Diagnostic.Invoke($"{label}: {EventShape.Describe(p, hidden)}");
     }
 
     // UpdateChatSettings: [0] tab names, [1] per-tab arrays of channel IDs

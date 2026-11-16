@@ -154,14 +154,9 @@ public sealed class AppSettings
                 node["KeyService"] = nameof(KeyService.DeepL);
 
             var settings = node.Deserialize(SettingsJsonContext.Default.AppSettings) ?? new AppSettings();
-            if (settings.Version < 3)
-            {
-                // 2.x showed the game's Combat tab, which never gets chat here (it holds system and
-                // combat messages). Hide it once; the user can turn it back on in Settings.
-                foreach (var tab in settings.Tabs.Where(t => string.Equals(t.Name, "Combat", StringComparison.OrdinalIgnoreCase)))
-                    tab.Enabled = false;
-                settings.Version = CurrentVersion;
-            }
+            // The game's Combat tab holds combat and system messages, never player chat: drop it.
+            settings.Tabs.RemoveAll(IsCombat);
+            settings.Version = CurrentVersion;
             return settings;
         }
         catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
@@ -184,15 +179,18 @@ public sealed class AppSettings
     public void MergeTabs(IEnumerable<ChatTab> fromGame)
     {
         var previous = Tabs.ToDictionary(t => t.Name, StringComparer.OrdinalIgnoreCase);
-        Tabs = fromGame.Select(t => new TabSetting
+        Tabs = fromGame.Where(t => !t.IsCombatTab).Select(t => new TabSetting
         {
             Name = t.Name,
             ChannelIds = [.. t.ChannelIds],
             GameKey = t.GameKey,
-            // Keep the user's choice; new tabs are shown, except the game's Combat tab (no chat in it).
-            Enabled = previous.TryGetValue(t.Name, out var old) ? old.Enabled : !t.IsCombatTab,
+            Enabled = !previous.TryGetValue(t.Name, out var old) || old.Enabled, // keep the user's choice
         }).ToList();
     }
+
+    private static bool IsCombat(TabSetting t) =>
+        string.Equals(t.GameKey, "COMBAT", StringComparison.OrdinalIgnoreCase)
+        || t.GameKey is null && string.Equals(t.Name, "Combat", StringComparison.OrdinalIgnoreCase);
 
     // v1 (the original DeepL-only app) stored the DeepL key in plain text. Encrypt it and drop the rest.
     private static AppSettings MigrateFromV1(JsonObject v1)
