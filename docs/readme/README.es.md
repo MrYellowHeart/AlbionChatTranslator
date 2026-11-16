@@ -18,7 +18,7 @@ Gratis, sin cuenta, sin clave de API, sin configurar nada. **Código abierto**: 
 
 1. Abre [**Releases**](https://github.com/MrYellowHeart/AlbionChatTranslator/releases) y descarga `AlbionChatTranslator-win-Setup.exe`.
 2. Ejecútalo. No hace falta nada más (.NET viene incluido). Se instala solo para tu usuario de Windows.
-3. Elige el idioma en el que lees.
+3. Elige el idioma en que lees y el servidor en el que juegas, y marca los idiomas que ves en el chat. Sus paquetes sin conexión se descargan en segundo plano (en América, inglés, español y portugués vienen marcados; para Europa y Asia no se presupone nada, eliges tú).
 4. Haz clic en **▶ Start** y elige **Sí** en el aviso de Windows ([¿por qué?](#por-qué-pide-permisos-de-administrador)).
 5. Entra en Albion. Tus pestañas de chat aparecen solas en la app.
 
@@ -70,14 +70,14 @@ Funcionan con Albion en primer plano. Si otro programa ya usa alguno, la app te 
 | **Cuándo traducir** | *Automáticamente* o *solo cuando haga clic en [translate]*. |
 | **No enviar nunca estos canales** | Por ejemplo susurros o gremio, si quieres que sean privados. |
 | **No traducir nunca estas palabras** | Nombres de gremio, de amigos, tu propia jerga. |
-| **Traductores** | En este orden: **1.** tu propia clave de Microsoft Translator o DeepL (opcional, lo más fiable), **2.** Google Translate (sin configurar), **3.** la copia de seguridad sin conexión. Cada uno se puede activar o desactivar. |
+| **Traductores** | Se usan en este orden: **1.** tu propia clave de Microsoft Translator o DeepL (opcional), **2.** modelos sin conexión en tu PC (no se envía nada), **3.** Google Translate, solo para idiomas sin modelo sin conexión. Cada uno se puede activar o desactivar. Abreviaturas como *xq*, *ntp*, *porfa*, *jaja*, *vc*, *blz* se expanden antes de traducir. |
 | **Recordar traducciones 7 días** | Menos mensajes enviados tras reiniciar. Desactivado por defecto. |
 
 ## Cómo funciona
 
 1. **Lectura del chat.** Albion no tiene sistema de addons, así que la app lee el tráfico de red del juego, como las herramientas conocidas de la comunidad. Un pequeño ayudante oculto lo hace y pasa solo los mensajes de chat. Solo lee: nunca cambia, envía ni inyecta nada.
 2. **Qué traducir.** En tu PC, la app reconoce los mensajes que ya están en tus idiomas, los demasiado cortos, los que solo son enlaces de objetos o los ya traducidos. **Esos nunca salen de tu PC.** También protege palabras de Albion (ciudades, tiers como `t8.3`, enlaces de objetos, "gank", "zerg"…) y convierte jerga como `lf healer pls` en inglés normal antes, lo que mejora mucho la traducción.
-3. **Traducción.** Lo que queda, solo el texto del mensaje, se envía a Google Translate (o DeepL) y se muestra el resultado.
+3. **Traducción.** Lo que queda, solo el texto del mensaje, lo traducen primero los modelos sin conexión de tu PC (no se envía nada). Google Translate solo se usa para idiomas sin modelo sin conexión.
 4. **Respuesta.** Lo que escribes se traduce igual y va al portapapeles.
 
 ### ¿Por qué pide permisos de administrador?

@@ -256,9 +256,12 @@ public sealed class TranslationService : IAsyncDisposable
         catch (Exception e) { System.Diagnostics.Debug.WriteLine($"[Translation] callback failed: {e}"); }
     }
 
-    /// <summary>English shorthand ("lf healer pls") becomes plain English before translation.</summary>
+    /// <summary>
+    /// Chat shorthand becomes plain words before translation ("lf healer pls", "vc vem?", "ntp").
+    /// Lines whose language is unknown are treated as English shorthand, the most common case.
+    /// </summary>
     private static ProtectedText WithPlainEnglish(ProtectedText p, string? detected) =>
-        detected is null or Languages.English ? p with { Text = ChatSlang.Expand(p.Text) } : p;
+        p with { Text = ChatSlang.Expand(p.Text, detected ?? Languages.English) };
 
     // ── Optional cache that survives restarts ────────────────────────────────
 

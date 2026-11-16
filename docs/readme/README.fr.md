@@ -18,7 +18,7 @@ Gratuit, sans compte, sans clé d'API, sans configuration. **Open source** : tou
 
 1. Ouvrez [**Releases**](https://github.com/MrYellowHeart/AlbionChatTranslator/releases) et téléchargez `AlbionChatTranslator-win-Setup.exe`.
 2. Lancez-le. Rien d'autre à installer (.NET est inclus). Il s'installe uniquement pour votre utilisateur Windows.
-3. Choisissez la langue dans laquelle vous lisez.
+3. Choisissez la langue que vous lisez et le serveur sur lequel vous jouez, puis cochez les langues que vous voyez dans le chat. Leurs packs hors ligne se téléchargent en arrière-plan (sur Americas, anglais, espagnol et portugais sont pré-cochés ; pour Europe et Asia rien n'est supposé, vous choisissez).
 4. Cliquez sur **▶ Start** puis **Oui** dans la fenêtre de Windows ([pourquoi ?](#pourquoi-faut-il-les-droits-administrateur-)).
 5. Connectez-vous à Albion. Vos onglets de chat apparaissent tout seuls dans l'application.
 
@@ -70,14 +70,14 @@ Ils fonctionnent quand Albion est au premier plan. Si un autre programme utilise
 | **Quand traduire** | *Automatiquement* ou *seulement quand je clique sur [translate]*. |
 | **Ne jamais envoyer ces canaux** | Par exemple les chuchotements ou la guilde, pour qu'ils restent privés. |
 | **Ne jamais traduire ces mots** | Noms de guilde, d'amis, votre propre argot. |
-| **Traducteurs** | Dans cet ordre : **1.** votre propre clé Microsoft Translator ou DeepL (facultatif, le plus fiable), **2.** Google Traduction (sans configuration), **3.** la réserve hors ligne. Chacun peut être activé ou désactivé. |
+| **Traducteurs** | Utilisés dans cet ordre : **1.** votre propre clé Microsoft Translator ou DeepL (facultatif), **2.** les modèles hors ligne sur votre PC (rien n'est envoyé), **3.** Google Traduction, seulement pour les langues sans modèle hors ligne. Chacun peut être activé ou désactivé. |
 | **Mémoriser les traductions 7 jours** | Moins d'envois après un redémarrage. Désactivé par défaut. |
 
 ## Comment ça marche
 
 1. **Lecture du chat.** Albion n'a pas de système d'add-ons ; l'application lit donc le trafic réseau du jeu, comme les outils connus de la communauté. Un petit assistant caché s'en charge et ne transmet que les messages de chat. Il lit seulement : il ne modifie, n'envoie et n'injecte rien.
 2. **Ce qui est traduit.** Sur votre PC, l'application reconnaît les messages déjà dans vos langues, trop courts, composés uniquement de liens d'objets ou déjà traduits. **Ceux-là ne quittent jamais votre PC.** Elle protège aussi les mots d'Albion (villes, tiers comme `t8.3`, liens d'objets, "gank", "zerg"…) et transforme d'abord l'argot comme `lf healer pls` en anglais normal, ce qui améliore beaucoup la traduction.
-3. **Traduction.** Ce qui reste, uniquement le texte du message, est envoyé à Google Traduction (ou DeepL), puis le résultat s'affiche.
+3. **Traduction.** Ce qui reste, seulement le texte du message, est d'abord traduit par les modèles hors ligne sur votre PC (rien n'est envoyé). Google Traduction n'est utilisé que pour les langues sans modèle hors ligne.
 4. **Réponse.** Votre texte est traduit de la même façon et mis dans le presse-papiers.
 
 ### Pourquoi faut-il les droits administrateur ?

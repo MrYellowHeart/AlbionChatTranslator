@@ -20,7 +20,7 @@ You can read and write in about 26 languages, and incoming messages are translat
 
 1. Go to [**Releases**](../../releases) and download `AlbionChatTranslator-win-Setup.exe`.
 2. Run it. Nothing else is needed (.NET is included). It installs for your Windows user only.
-3. Choose the language you read.
+3. Choose the language you read and the server you play on, and tick the languages you see in chat. Their offline packs download in the background (on Americas, English, Spanish and Portuguese are pre-ticked; for Europe and Asia nothing is assumed, you choose).
 4. Click **▶ Start** and choose **Yes** on the Windows prompt (see [why](#why-does-it-ask-for-administrator-rights)).
 5. Log in to Albion. Your chat tabs appear in the app by themselves.
 
@@ -75,27 +75,28 @@ They work while Albion has focus. If another program already uses one, the app t
 | **When to translate** | *Automatically*, or *only when I click [translate]* on a message. |
 | **Never send these channels** | For example whispers or guild chat, if you want them to stay private. |
 | **Never translate these words** | Guild names, friends' names, your own slang. |
-| **Translators** | Tried in order: **1.** your own Microsoft Translator or DeepL key (optional, most reliable), **2.** Google Translate (no setup), **3.** the offline backup. Each can be turned on or off. |
+| **Server and chat languages** | Which offline packs to keep ready. Changing them downloads the new packs in the background. |
+| **Translators** | Tried in order: **1.** your own Microsoft Translator or DeepL key (optional), **2.** offline models on your PC (nothing sent), **3.** Google Translate, only for languages without an offline model. Each can be turned on or off. |
 | **Remember translations for 7 days** | Fewer messages sent after a restart. Off by default. |
 | **Overlay** | Background opacity, and *show only translated messages*. |
 
 ## How it works
 
 ```
- Albion Online ──(network)──▶  1. Capture helper ──▶  2. App window ──▶  3. Google Translate
-                               reads chat only        decides what       (only the text of
-                               needs admin rights     needs translating   foreign messages)
+ Albion Online ──(network)──▶  1. Capture helper ──▶  2. App window ──▶  3. Translators
+                               reads chat only        decides what       (offline first)
+                               needs admin rights     needs translating
                                                              │
                                                              ▼
                                                       4. You read it here
 ```
 
 1. **Reading chat.** Albion has no add-on system, so the app reads the game's network traffic, the same way established Albion community tools do. A small hidden helper does this and passes only chat messages to the app. It reads; it never changes, sends or injects anything.
-2. **Deciding what to translate.** On your PC, the app recognises messages that are already in your languages, too short, only item links, or translated before. **Those never leave your PC.** It also protects Albion words (city names, tiers like `t8.3`, item links, "gank", "zerg"…) so they come back unchanged, and it turns gamer shorthand like `lf healer pls` into plain English first, which gives much better translations.
+2. **Deciding what to translate.** On your PC, the app recognises messages that are already in your languages, too short, only item links, or translated before. **Those never leave your PC.** It also protects Albion words (city names, tiers like `t8.3`, item links, "gank", "zerg"…) so they come back unchanged, and it turns gamer shorthand like `lf healer pls` into plain English first, which gives much better translations. Portuguese (*vc*, *blz*, *vlw*, *kkk*) and Spanish (*xq*, *ntp*, *porfa*, *jaja*) shorthand is spelled out the same way, and also helps recognise which of the two a short line is.
 3. **Translating.** What is left, only the message text, goes through a chain of translators, each used only when the one before can't answer:
    1. **Your own key** (optional): Microsoft Translator (2,000,000 characters free) or DeepL (500,000/month free). Official services with published limits.
-   2. **Google Translate**: no setup. Lines that arrive together share one request, and requests are spaced out; if Google still says "slow down", the app steps aside for a while instead of retrying.
-   3. **Offline backup**: an OPUS-MT model running on your PC. Nothing is sent. The first time a language is needed it downloads about 110 MB (pinned and checksum-verified); it uses about 200 MB more memory only while translating and frees it after 3 idle minutes.
+   2. **Offline models**: OPUS-MT running on your PC. Nothing is sent. Packs for the languages you ticked download once in the background (about 110 MB each, pinned and checksum-verified); a language you didn't tick downloads the first time it appears. They use about 200 MB more memory only while translating.
+   3. **Google Translate**: only for languages without an offline model, or while a pack is still downloading. Lines that arrive together share one request; if Google says "slow down", the app steps aside for a while instead of retrying.
 
    Lines translated offline are marked `(Spanish · offline)` so you know.
 4. **Replying.** Your typed text is translated the same way and put on your clipboard.
@@ -110,19 +111,19 @@ Windows only lets programs read network traffic with administrator rights. The a
 
 ## Privacy
 
-| Sent to the online translator (your key's service, or Google) | Never sent anywhere |
+| Sent to an online translator (your key's service, or Google when there is no offline model) | Never sent anywhere |
 |---|---|
 | The **text** of messages that are not in your languages | Messages in your languages, short messages, repeats |
 | The text you type into the reply box | Player names, channels, guild names, item links |
 | | Your account, character, or any game data |
 | | Anything from channels you excluded |
-| | Anything the offline backup translates |
+| | Anything translated offline |
 
 - Everything goes over HTTPS in the request body (never in a web address), with no cookies, no account and no app identifier. Like any website, Google sees your internet (IP) address.
 - The status bar counts every message that left your PC (*Sent for translation*).
 - No telemetry, no analytics, no ads, no chat logs. Nothing is written to disk unless you turn on *Remember translations*.
 - A DeepL key, if you add one, is encrypted with your Windows account.
-- Other connections: github.com (update checks) and huggingface.co (offline backup packs, only when one is first needed).
+- Other connections: github.com (update checks) and huggingface.co (offline packs: the languages you ticked, and any new language the first time it appears).
 
 Google Translate is used through the free endpoint Google's own web widgets use. It needs no key, but it is not an official API and Google limits it sharply per internet connection; busy chat can hit that within minutes. When it does, the app steps aside and the offline backup (or your own key) takes over, so translation does not stop. For the most dependable service, add a free Microsoft Translator or DeepL key.
 
@@ -156,7 +157,7 @@ The app only **reads** network traffic, like other Albion community tools. It do
 - **"Administrator permission was declined."** Click Start again and choose *Yes*. If your Windows account is not an administrator, an administrator has to approve it.
 - **Windows SmartScreen warns about the installer.** Releases are not code-signed yet. Check the file hash (see above), choose *More info → Run anyway*, or build it yourself.
 - **A hotkey does nothing.** Another program uses it; the app says which. Use the buttons instead.
-- **"Google is limiting requests; translating offline."** Google's free endpoint has a low limit. The offline backup takes over; the first time for a language it downloads its pack, so the first few lines may show untranslated. Adding a free Microsoft or DeepL key avoids this entirely.
+- **A line shows untranslated with "downloading offline pack".** That language's pack is still downloading (about 110 MB, once). Tick the languages you see in chat in Settings so they are ready before you play.
 - **After a big Albion update** chat may stop appearing until the app updates itself.
 
 ## For developers

@@ -13,13 +13,14 @@ public partial class SettingsWindow : Window
     private readonly AppSettings _settings;
     private readonly Action _clearCache;
     private readonly ModelStore _store;
+    private readonly LanguagePicker _picker;
     private string _microsoftKey, _deepLKey;
     private KeyService _shownService = KeyService.None;
     private readonly List<(CheckBox Box, TabSetting Tab)> _tabBoxes = [];
     private readonly List<(CheckBox Box, string Code)> _readBoxes = [];
     private readonly (CheckBox Box, ChannelKind Kind)[] _channelBoxes;
 
-    public SettingsWindow(AppSettings settings, Action clearCache, ModelStore store)
+    public SettingsWindow(AppSettings settings, Action clearCache, ModelStore store, ModelCatalog catalog)
     {
         InitializeComponent();
         _settings = settings;
@@ -31,6 +32,12 @@ public partial class SettingsWindow : Window
         var targets = Languages.All.ToList();
         CboLanguage.ItemsSource = targets;
         CboLanguage.SelectedItem = targets.FirstOrDefault(l => l.Code == settings.TargetLanguage) ?? targets.First(l => l.Code == Languages.English);
+        _picker = new LanguagePicker(CboServer, TxtServerHint, LanguagesPanel, TxtPackSummary, catalog, store,
+            settings.TargetLanguage, settings.Server, settings.ChatLanguages);
+        CboLanguage.SelectionChanged += (_, _) =>
+        {
+            if (CboLanguage.SelectedItem is LanguageInfo l) _picker.SetReader(l.Code);
+        };
 
         foreach (var lang in Languages.All)
         {
@@ -158,6 +165,8 @@ public partial class SettingsWindow : Window
         }
 
         if (CboLanguage.SelectedItem is LanguageInfo lang) _settings.TargetLanguage = lang.Code;
+        _settings.Server = _picker.Server;
+        _settings.ChatLanguages = _picker.Selected;
         _settings.ReadLanguages = _readBoxes.Where(r => r.Box.IsChecked == true && r.Code != _settings.TargetLanguage).Select(r => r.Code).ToList();
         _settings.Mode = RbOnClick.IsChecked == true ? TranslateMode.OnClick : TranslateMode.Automatic;
         _settings.NeverSendChannels = _channelBoxes.Where(c => c.Box.IsChecked == true).Select(c => c.Kind).ToList();

@@ -25,7 +25,12 @@ public sealed record ChatLine(
     string Text);
 
 /// <summary>A chat tab as configured in the game client.</summary>
-public sealed record ChatTab(string Name, IReadOnlyList<int> ChannelIds);
+/// <param name="GameKey">The game's built-in tab key (e.g. "COMBAT") for default tabs; null for tabs the player named.</param>
+public sealed record ChatTab(string Name, IReadOnlyList<int> ChannelIds, string? GameKey = null)
+{
+    /// <summary>The game's own Combat tab: system and combat messages, which this app does not read.</summary>
+    public bool IsCombatTab => string.Equals(GameKey, "COMBAT", StringComparison.OrdinalIgnoreCase);
+}
 
 /// <summary>
 /// Chat-settings channel type IDs. These were identified empirically by the original

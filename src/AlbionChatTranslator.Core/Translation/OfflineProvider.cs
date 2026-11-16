@@ -105,6 +105,28 @@ public sealed class OfflineProvider : ITranslationProvider
 
     private ProviderResult Fail(string message) => new(ProviderOutcome.Failed, Message: message, By: Name);
 
+    /// <summary>
+    /// Downloads packs ahead of time (the languages the user said they see in chat), one after
+    /// another. Failures are reported through <see cref="DownloadFinished"/> and do not stop the rest.
+    /// Returns how many packs are installed afterwards.
+    /// </summary>
+    public async Task<int> PrefetchAsync(IReadOnlyList<ModelPack> packs, CancellationToken ct = default)
+    {
+        int ready = 0;
+        foreach (var pack in packs)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (_store.IsInstalled(pack)) { ready++; continue; }
+            try
+            {
+                await StartDownload(pack).WaitAsync(ct).ConfigureAwait(false);
+                ready++;
+            }
+            catch (Exception e) when (e is not OperationCanceledException) { }
+        }
+        return ready;
+    }
+
     private Task StartDownload(ModelPack pack) =>
         _downloads.GetOrAdd(pack.Id, _ => new Lazy<Task>(() => RunDownloadAsync(pack))).Value;
 

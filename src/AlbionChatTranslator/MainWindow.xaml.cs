@@ -73,7 +73,7 @@ public partial class MainWindow : Window
         {
             if (_settings.IsFirstRun)
             {
-                new WelcomeWindow(_settings) { Owner = this }.ShowDialog();
+                new WelcomeWindow(_settings, _offline.Catalog, _offline.Store) { Owner = this }.ShowDialog();
                 _settings.Save();
                 ApplySettings();
             }
@@ -117,7 +117,8 @@ public partial class MainWindow : Window
         _translation.ReadLanguages = _settings.ReadLanguages.ToHashSet();
         Glossary.SetCustomTerms(_settings.CustomTerms);
 
-        // Translators are tried in order: your own key, then Google, then offline.
+        // Translators are tried in order: your own key, then offline (nothing sent), then Google
+        // for languages without an offline model (Google limits its free endpoint quickly).
         _keyed?.Dispose();
         _keyed = _settings.KeyService switch
         {
@@ -127,8 +128,8 @@ public partial class MainWindow : Window
         };
         var chain = new List<ITranslationProvider>();
         if (_keyed is not null) chain.Add(_keyed);
-        if (_settings.UseGoogle || chain.Count == 0 && !_settings.OfflineFallback) chain.Add(_google);
         if (_settings.OfflineFallback) chain.Add(_offline);
+        if (_settings.UseGoogle || chain.Count == 0) chain.Add(_google);
         _translation.Provider = new ChainProvider(chain);
         _translation.Offline = _settings.OfflineFallback ? _offline : null;
 
@@ -136,6 +137,7 @@ public partial class MainWindow : Window
         if (_settings.Mode == TranslateMode.OnClick) TxtProvider.Text += " · click to translate";
 
         if (!_settings.KeepCacheOnDisk) _translation.ClearCacheFile(AppSettings.CachePath);
+        StartPrefetch();
         _overlay?.ApplySettings();
         RebuildTabs();
     }
@@ -278,8 +280,6 @@ public partial class MainWindow : Window
             {
                 TxtActivity.Text = msg;
             }
-            if (result.By == "Offline" && _google.PausedUntil is { } until)
-                TxtActivity.Text = $"Google is limiting requests; translating offline until {until.ToLocalTime():HH:mm}";
         }));
     }
 
@@ -369,7 +369,7 @@ public partial class MainWindow : Window
 
     private void BtnSettings_Click(object sender, RoutedEventArgs e)
     {
-        var window = new SettingsWindow(_settings, () => _translation.ClearCache(AppSettings.CachePath), _offline.Store) { Owner = this };
+        var window = new SettingsWindow(_settings, () => _translation.ClearCache(AppSettings.CachePath), _offline.Store, _offline.Catalog) { Owner = this };
         if (window.ShowDialog() == true)
         {
             _settings.Save();
@@ -379,6 +379,32 @@ public partial class MainWindow : Window
 
     private void BtnHelp_Click(object sender, RoutedEventArgs e) =>
         new HelpWindow { Owner = this }.ShowDialog();
+
+    private CancellationTokenSource? _prefetch;
+
+    /// <summary>Downloads the offline packs for the languages the user sees in chat, in the background.</summary>
+    private void StartPrefetch()
+    {
+        _prefetch?.Cancel();
+        if (!_settings.OfflineFallback || _settings.ChatLanguages.Count == 0) return;
+        var packs = _offline.Catalog.PacksFor(_settings.TargetLanguage, _settings.ChatLanguages)
+            .Where(p => !_offline.Store.IsInstalled(p)).ToList();
+        if (packs.Count == 0) return;
+
+        var cts = _prefetch = new CancellationTokenSource();
+        DiagnosticLog.Write($"prefetch: {packs.Count} packs ({packs.Sum(p => p.TotalSize) / 1_000_000} MB): {string.Join(", ", packs.Select(p => p.Id))}");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                int ready = await _offline.PrefetchAsync(packs, cts.Token);
+                await Dispatcher.InvokeAsync(() => TxtActivity.Text = ready == packs.Count
+                    ? "Offline language packs ready"
+                    : $"{packs.Count - ready} offline pack(s) could not be downloaded; they will be retried when needed");
+            }
+            catch (OperationCanceledException) { }
+        });
+    }
 
     private void OnDownloadProgress(string pack, long done, long total)
     {

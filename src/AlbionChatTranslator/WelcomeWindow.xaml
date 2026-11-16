@@ -2,17 +2,25 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Welcome"
-        Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        Width="500" SizeToContent="Height" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         Background="#1A1A1A">
 
     <StackPanel Margin="24">
         <TextBlock Text="Albion Chat Translator" Foreground="{StaticResource Accent}" FontSize="18" FontWeight="Bold"/>
-        <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,16"
+        <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,14"
                    Text="Translates Albion Online chat as it happens. Free, no account, no setup."/>
 
         <TextBlock Text="Which language do you read?" Foreground="#D0D0D0" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-        <ComboBox x:Name="CboLanguage" DisplayMemberPath="Name" Height="26" Margin="0,0,0,16"/>
+        <ComboBox x:Name="CboLanguage" DisplayMemberPath="Name" Height="26" Margin="0,0,0,14"/>
+
+        <TextBlock Text="Which server do you play on?" Foreground="#D0D0D0" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
+        <ComboBox x:Name="CboServer" Height="26"/>
+        <TextBlock x:Name="TxtServerHint" Style="{StaticResource Hint}" Margin="0,4,0,8"/>
+
+        <TextBlock Text="Which languages do you see in chat?" Foreground="#D0D0D0" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <WrapPanel x:Name="LanguagesPanel"/>
+        <TextBlock x:Name="TxtPackSummary" Style="{StaticResource Hint}" Margin="0,4,0,14"/>
 
         <TextBlock Text="How it works" Foreground="#D0D0D0" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
         <TextBlock Style="{StaticResource Hint}" Text="1.  Click ▶ Start and approve the Windows prompt. Reading game traffic needs administrator rights; only a small hidden helper gets them."/>
@@ -20,7 +28,7 @@
         <TextBlock Style="{StaticResource Hint}" Text="3.  Click the (Language) tag after a message to reply in that language."/>
 
         <TextBlock Text="Privacy" Foreground="#D0D0D0" FontSize="13" FontWeight="SemiBold" Margin="0,12,0,6"/>
-        <TextBlock Style="{StaticResource Hint}" Text="Messages in other languages are translated by Google Translate, or by an offline model on your PC when Google is busy (it downloads about 110 MB per language the first time). Only the message text is ever sent: never player names, channels, item links or anything about you. Messages already in your language, short ones and repeats never leave your PC. For the most reliable service you can add your own free Microsoft or DeepL key in Settings."/>
+        <TextBlock Style="{StaticResource Hint}" Text="Chat is translated by offline models on your PC, so nothing is sent. For a language without an offline model, the message text alone goes to Google Translate: never player names, channels, item links or anything about you. Messages in your language, short ones and repeats are never translated or sent. You can add your own free Microsoft or DeepL key in Settings."/>
 
         <Button Content="Let's go" IsDefault="True" HorizontalAlignment="Right" Width="110" Margin="0,16,0,0"
                 Style="{StaticResource PrimaryButton}" Click="BtnOk_Click"/>

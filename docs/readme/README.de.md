@@ -18,7 +18,7 @@ Kostenlos, ohne Konto, ohne API-Schlüssel, ohne Einrichtung. **Open Source**: D
 
 1. Öffne [**Releases**](https://github.com/MrYellowHeart/AlbionChatTranslator/releases) und lade `AlbionChatTranslator-win-Setup.exe` herunter.
 2. Starte die Datei. Mehr braucht es nicht (.NET ist enthalten). Installiert wird nur für deinen Windows-Benutzer.
-3. Wähle die Sprache, in der du liest.
+3. Wähle die Sprache, die du liest, und den Server, auf dem du spielst, und hake die Sprachen an, die du im Chat siehst. Ihre Offline-Pakete laden im Hintergrund herunter (auf Americas sind Englisch, Spanisch und Portugiesisch vorausgewählt; für Europe und Asia wird nichts angenommen, du wählst).
 4. Klicke auf **▶ Start** und wähle **Ja** im Windows-Dialog ([warum?](#warum-braucht-es-administratorrechte)).
 5. Logge dich in Albion ein. Deine Chat-Tabs erscheinen automatisch in der App.
 
@@ -70,14 +70,14 @@ Sie funktionieren, während Albion im Vordergrund ist. Ist eine Kombination scho
 | **Wann übersetzen** | *Automatisch* oder *nur wenn ich auf [translate] klicke*. |
 | **Diese Kanäle nie senden** | Zum Beispiel Flüstern oder Gilde, wenn sie privat bleiben sollen. |
 | **Diese Wörter nie übersetzen** | Gildennamen, Namen von Freunden, eigener Slang. |
-| **Übersetzer** | In dieser Reihenfolge: **1.** dein eigener Schlüssel für Microsoft Translator oder DeepL (optional, am zuverlässigsten), **2.** Google Übersetzer (ohne Einrichtung), **3.** die Offline-Reserve. Jeder lässt sich ein- oder ausschalten. |
+| **Übersetzer** | Der Reihe nach: **1.** dein eigener Microsoft-Translator- oder DeepL-Schlüssel (optional), **2.** Offline-Modelle auf deinem PC (nichts wird gesendet), **3.** Google Übersetzer, nur für Sprachen ohne Offline-Modell. Jeder lässt sich ein- und ausschalten. |
 | **Übersetzungen 7 Tage merken** | Weniger Anfragen nach einem Neustart. Standardmäßig aus. |
 
 ## So funktioniert es
 
 1. **Chat lesen.** Albion hat kein Add-on-System, deshalb liest die App den Netzwerkverkehr des Spiels, wie bekannte Community-Tools. Ein kleiner versteckter Helfer erledigt das und gibt nur Chatnachrichten an die App weiter. Er liest nur: Er ändert, sendet oder injiziert nichts.
 2. **Was übersetzt wird.** Auf deinem PC erkennt die App Nachrichten, die schon in deinen Sprachen sind, zu kurz sind, nur aus Item-Links bestehen oder schon übersetzt wurden. **Diese verlassen deinen PC nie.** Außerdem schützt sie Albion-Begriffe (Städte, Tiers wie `t8.3`, Item-Links, "gank", "zerg"…) und macht aus Slang wie `lf healer pls` zuerst normales Englisch, was die Übersetzung deutlich verbessert.
-3. **Übersetzen.** Was übrig bleibt, nur der Nachrichtentext, geht an den Google Übersetzer (oder DeepL), und das Ergebnis wird angezeigt.
+3. **Übersetzen.** Was übrig bleibt, nur der Nachrichtentext, wird zuerst von den Offline-Modellen auf deinem PC übersetzt (nichts wird gesendet). Google Übersetzer wird nur für Sprachen ohne Offline-Modell genutzt.
 4. **Antworten.** Dein Text wird genauso übersetzt und in die Zwischenablage gelegt.
 
 ### Warum braucht es Administratorrechte?

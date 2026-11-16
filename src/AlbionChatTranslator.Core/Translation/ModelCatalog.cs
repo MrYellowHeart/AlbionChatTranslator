@@ -60,6 +60,26 @@ public sealed class ModelCatalog
     public IEnumerable<LanguageInfo> TargetLanguages => Languages.All.Where(l => CanTranslateTo(l.Code));
 
     /// <summary>
+    /// Every pack needed to read <paramref name="chatLanguages"/> in <paramref name="reader"/>'s
+    /// language and to reply into them (both directions; pivots through English included).
+    /// </summary>
+    public IReadOnlyList<ModelPack> PacksFor(string reader, IEnumerable<string> chatLanguages)
+    {
+        var packs = new Dictionary<string, ModelPack>(StringComparer.OrdinalIgnoreCase);
+        foreach (var lang in chatLanguages.Select(Languages.Normalize).Distinct())
+        {
+            if (lang == Languages.Normalize(reader)) continue;
+            foreach (var route in new[] { Route(lang, reader), Route(reader, lang) })
+                foreach (var step in route ?? [])
+                    packs.TryAdd(step.Pack.Id, step.Pack);
+        }
+        return packs.Values.ToList();
+    }
+
+    /// <summary>Whether replies can be written into <paramref name="lang"/> offline.</summary>
+    public bool CanReplyOffline(string reader, string lang) => Route(reader, lang) is not null;
+
+    /// <summary>
     /// The model steps to translate <paramref name="source"/> into <paramref name="target"/>,
     /// pivoting through English when neither side is English. Null if unsupported.
     /// </summary>

@@ -18,7 +18,7 @@ Za darmo, bez konta, bez klucza API, bez konfiguracji. **Otwarte źródło**: ca
 
 1. Otwórz [**Releases**](https://github.com/MrYellowHeart/AlbionChatTranslator/releases) i pobierz `AlbionChatTranslator-win-Setup.exe`.
 2. Uruchom. Nic więcej nie trzeba (.NET jest w zestawie). Instaluje się tylko dla Twojego użytkownika Windows.
-3. Wybierz język, w którym czytasz.
+3. Wybierz język, w którym czytasz, i serwer, na którym grasz, oraz zaznacz języki, które widzisz na czacie. Ich pakiety offline pobiorą się w tle (na Americas angielski, hiszpański i portugalski są zaznaczone z góry; dla Europe i Asia nic nie jest zakładane, wybierasz ty).
 4. Kliknij **▶ Start** i wybierz **Tak** w oknie Windows ([dlaczego?](#dlaczego-potrzebne-są-uprawnienia-administratora)).
 5. Zaloguj się do Albion. Twoje karty czatu pojawią się w aplikacji same.
 
@@ -70,14 +70,14 @@ Działają, gdy Albion jest aktywny. Jeśli inny program już używa skrótu, ap
 | **Kiedy tłumaczyć** | *Automatycznie* albo *tylko gdy kliknę [translate]*. |
 | **Nigdy nie wysyłaj tych kanałów** | Np. szepty lub gildię, jeśli mają zostać prywatne. |
 | **Nigdy nie tłumacz tych słów** | Nazwy gildii, imiona znajomych, własny slang. |
-| **Tłumacze** | W tej kolejności: **1.** Twój własny klucz Microsoft Translator lub DeepL (opcjonalnie, najbardziej niezawodne), **2.** Google Tłumacz (bez konfiguracji), **3.** zapas offline. Każdy można włączyć lub wyłączyć. |
+| **Tłumacze** | Używane w tej kolejności: **1.** twój własny klucz Microsoft Translator lub DeepL (opcjonalnie), **2.** modele offline na twoim PC (nic nie jest wysyłane), **3.** Tłumacz Google, tylko dla języków bez modelu offline. Każdy można włączyć lub wyłączyć. |
 | **Zapamiętuj tłumaczenia przez 7 dni** | Mniej wysyłek po ponownym uruchomieniu. Domyślnie wyłączone. |
 
 ## Jak to działa
 
 1. **Czytanie czatu.** Albion nie ma systemu dodatków, więc aplikacja czyta ruch sieciowy gry, tak jak znane narzędzia społeczności. Robi to mały ukryty pomocnik, który przekazuje aplikacji wyłącznie wiadomości czatu. Tylko czyta: niczego nie zmienia, nie wysyła ani nie wstrzykuje.
 2. **Co tłumaczyć.** Na Twoim komputerze aplikacja rozpoznaje wiadomości już w Twoich językach, zbyt krótkie, same linki do przedmiotów lub wcześniej przetłumaczone. **Te nigdy nie opuszczają Twojego komputera.** Chroni też słowa z Albion (miasta, tiery jak `t8.3`, linki do przedmiotów, "gank", "zerg"…) i najpierw zamienia slang typu `lf healer pls` na zwykły angielski, co bardzo poprawia tłumaczenie.
-3. **Tłumaczenie.** To, co zostaje, czyli tylko tekst wiadomości, trafia do Google Tłumacza (lub DeepL), a wynik się wyświetla.
+3. **Tłumaczenie.** To, co zostaje, czyli sam tekst wiadomości, najpierw tłumaczą modele offline na twoim PC (nic nie jest wysyłane). Tłumacz Google jest używany tylko dla języków bez modelu offline.
 4. **Odpowiedź.** Twój tekst jest tłumaczony tak samo i trafia do schowka.
 
 ### Dlaczego potrzebne są uprawnienia administratora?

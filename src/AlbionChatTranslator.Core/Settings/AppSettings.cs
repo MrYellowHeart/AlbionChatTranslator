@@ -9,6 +9,9 @@ using System.Text.Json.Serialization;
 
 namespace AlbionChatTranslator.Core.Settings;
 
+/// <summary>The Albion server the user plays on.</summary>
+public enum GameServer { Unknown, Americas, Europe, Asia }
+
 /// <summary>An optional official translation service the user has a key for.</summary>
 public enum KeyService { None, Microsoft, DeepL }
 
@@ -19,12 +22,15 @@ public sealed class TabSetting
     public string Name { get; set; } = string.Empty;
     public List<int> ChannelIds { get; set; } = [];
     public bool Enabled { get; set; } = true;
+    /// <summary>The game's built-in tab key (e.g. "COMBAT"), if any.</summary>
+    public string? GameKey { get; set; }
 }
 
 /// <summary>User settings in %APPDATA%\AlbionChatTranslator\settings.json.</summary>
 public sealed class AppSettings
 {
-    public int Version { get; set; } = 2;
+    public const int CurrentVersion = 3;
+    public int Version { get; set; } = CurrentVersion;
 
     /// <summary>Language chat is translated into (ISO 639-1).</summary>
     public string TargetLanguage { get; set; } = Languages.English;
@@ -46,6 +52,12 @@ public sealed class AppSettings
 
     /// <summary>Other languages the user reads (ISO 639-1): shown as-is, never sent.</summary>
     public List<string> ReadLanguages { get; set; } = [];
+
+    /// <summary>The server the user plays on (asked on first launch).</summary>
+    public GameServer Server { get; set; } = GameServer.Unknown;
+
+    /// <summary>Languages the user sees in chat: their offline packs are downloaded ahead of time.</summary>
+    public List<string> ChatLanguages { get; set; } = [];
 
     /// <summary>Channel kinds whose messages are never sent for translation (e.g. whispers).</summary>
     public List<ChannelKind> NeverSendChannels { get; set; } = [];
@@ -141,7 +153,16 @@ public sealed class AppSettings
             if (node["KeyService"] is null && node["DeepLKeyProtected"]?.GetValue<string>() is { Length: > 0 })
                 node["KeyService"] = nameof(KeyService.DeepL);
 
-            return node.Deserialize(SettingsJsonContext.Default.AppSettings) ?? new AppSettings();
+            var settings = node.Deserialize(SettingsJsonContext.Default.AppSettings) ?? new AppSettings();
+            if (settings.Version < 3)
+            {
+                // 2.x showed the game's Combat tab, which never gets chat here (it holds system and
+                // combat messages). Hide it once; the user can turn it back on in Settings.
+                foreach (var tab in settings.Tabs.Where(t => string.Equals(t.Name, "Combat", StringComparison.OrdinalIgnoreCase)))
+                    tab.Enabled = false;
+                settings.Version = CurrentVersion;
+            }
+            return settings;
         }
         catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
         {
@@ -167,7 +188,9 @@ public sealed class AppSettings
         {
             Name = t.Name,
             ChannelIds = [.. t.ChannelIds],
-            Enabled = !previous.TryGetValue(t.Name, out var old) || old.Enabled,
+            GameKey = t.GameKey,
+            // Keep the user's choice; new tabs are shown, except the game's Combat tab (no chat in it).
+            Enabled = previous.TryGetValue(t.Name, out var old) ? old.Enabled : !t.IsCombatTab,
         }).ToList();
     }
 

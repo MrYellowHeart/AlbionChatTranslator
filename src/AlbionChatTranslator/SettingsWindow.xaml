@@ -17,6 +17,14 @@
                 <TextBlock Text="TRANSLATE CHAT INTO" Style="{StaticResource SectionHeader}"/>
                 <ComboBox x:Name="CboLanguage" DisplayMemberPath="Name" Height="26"/>
 
+                <TextBlock Text="SERVER AND CHAT LANGUAGES" Style="{StaticResource SectionHeader}"/>
+                <TextBlock Style="{StaticResource Hint}" Text="Server you play on:"/>
+                <ComboBox x:Name="CboServer" Height="24"/>
+                <TextBlock x:Name="TxtServerHint" Style="{StaticResource Hint}"/>
+                <TextBlock Style="{StaticResource Hint}" Text="Languages you see in chat (their offline packs are kept ready):"/>
+                <WrapPanel x:Name="LanguagesPanel"/>
+                <TextBlock x:Name="TxtPackSummary" Style="{StaticResource Hint}"/>
+
                 <TextBlock Text="I CAN ALSO READ" Style="{StaticResource SectionHeader}"/>
                 <TextBlock Style="{StaticResource Hint}" Text="Messages in these languages are shown as-is and never sent for translation."/>
                 <WrapPanel x:Name="ReadLanguagesPanel"/>
@@ -56,13 +64,14 @@
                     </TextBlock>
                 </StackPanel>
 
-                <CheckBox x:Name="CbUseGoogle" Margin="0,10,0,0" Content="2. Google Translate (free, no setup)"/>
+                <CheckBox x:Name="CbOffline" Margin="0,10,0,0" Content="2. Offline models on your PC (recommended)"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="20,0,0,4"
-                           Text="Several lines share one request and requests are paced; Google still limits busy use, so the next option takes over when it does."/>
+                           Text="Nothing is sent. Packs for the languages you picked above download once (about 110 MB each); other languages download the first time they appear. Uses about 200 MB more memory only while translating."/>
 
-                <CheckBox x:Name="CbOffline" Content="3. Offline backup when the above are busy or unreachable"/>
+                <CheckBox x:Name="CbUseGoogle" Content="3. Google Translate, for languages without an offline model"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="20,0,0,4"
-                           Text="Translates on your PC, so nothing is sent. Downloads about 110 MB once per language the first time it is needed, and uses about 200 MB more memory only while it is translating."/>
+                           Text="Free and no setup, but Google limits it quickly, so it is used last. Only the message text is sent."/>
+
                 <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
                     <TextBlock x:Name="TxtPacks" Foreground="#888" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <Button Content="Delete offline packs" Padding="6,1" FontSize="11" Click="BtnDeletePacks_Click"/>

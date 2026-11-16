@@ -168,7 +168,8 @@ public sealed class ChatEventParser
             if (names[i] is not string rawName || string.IsNullOrWhiteSpace(rawName)) continue;
             var ids = ParamReader.ToIntList(channelLists[i]);
             if (ids.Count == 0) continue;
-            result.Add(new ChatTab(FriendlyTabName(rawName), ids));
+            string? key = rawName.StartsWith(TabNamePrefix, StringComparison.OrdinalIgnoreCase) ? rawName[TabNamePrefix.Length..] : null;
+            result.Add(new ChatTab(FriendlyTabName(rawName), ids, key));
         }
         return result;
     }

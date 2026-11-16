@@ -99,6 +99,18 @@ public sealed partial class ChatLanguageDetector
         if (slang * 2 > words.Count && !nonLatin)
             return [Languages.English];
 
+        // Portuguese/Spanish chat shorthand ("vc", "blz", "eae", "ntp", "jaja") is a strong hint on
+        // the short, slangy lines statistical detection gets wrong ("eae galera bora" -> Turkish).
+        string? slangHint = null;
+        if (!nonLatin)
+        {
+            int pt = words.Count(w => ChatSlang.IsDistinctive(w, "pt"));
+            int es = words.Count(w => ChatSlang.IsDistinctive(w, "es"));
+            if (pt > 0 && es == 0) slangHint = "pt";
+            else if (es > 0 && pt == 0) slangHint = "es";
+            if (slangHint is not null && Math.Max(pt, es) >= 2) return [slangHint];
+        }
+
         // Plain English sentences: let the whole line speak before any words are stripped.
         if (!nonLatin && slang > 0)
         {
@@ -110,13 +122,20 @@ public sealed partial class ChatLanguageDetector
         // Judge the language on what is left after English loanwords ("kto idzie na dungeon").
         var foreign = words.Where(w => !EnglishChat.Contains(w)).ToList();
         if (foreign.Sum(w => w.Length) < MinForeignLetters && !nonLatin)
-            return slang > 0 ? [Languages.English] : [];
+            return slangHint is not null ? [slangHint] : slang > 0 ? [Languages.English] : [];
 
         var weighted = Weighted(string.Join(' ', foreign));
-        if (weighted.Count == 0) return [];
+        if (weighted.Count == 0) return slangHint is not null ? [slangHint] : [];
 
         double total = weighted.Sum(x => x.Score);
         double top = total > 0 ? weighted[0].Score / total : 0;
+
+        // One distinctive shorthand word: trust it when the n-grams are unsure or agree loosely.
+        if (slangHint is not null)
+        {
+            int rank = weighted.FindIndex(x => x.Code == slangHint);
+            if (top < MinConfidence || rank is >= 0 and < 3) return [slangHint];
+        }
         if (top < MinConfidence) return [];
 
         var close = weighted.TakeWhile(x => x.Score >= weighted[0].Score * ReaderBias).Select(x => x.Code).ToList();

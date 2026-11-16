@@ -18,7 +18,7 @@ Albion Online sohbetini kendi dilinde oku, karşındakinin dilinde cevap ver.
 
 1. [**Releases**](https://github.com/MrYellowHeart/AlbionChatTranslator/releases) sayfasını aç ve `AlbionChatTranslator-win-Setup.exe` dosyasını indir.
 2. Çalıştır. Başka bir şey gerekmez (.NET dahil). Sadece senin Windows kullanıcın için kurulur.
-3. Okuduğun dili seç.
+3. Okuduğun dili ve oynadığın sunucuyu seç, sohbette gördüğün dilleri işaretle. Bu dillerin çevrimdışı paketleri arka planda iner (Americas'ta İngilizce, İspanyolca ve Portekizce önceden işaretlidir; Europe ve Asia için hiçbir şey varsayılmaz, sen seçersin).
 4. **▶ Start**'a tıkla ve Windows penceresinde **Evet**'i seç ([neden?](#neden-yönetici-izni-istiyor)).
 5. Albion'a gir. Sohbet sekmelerin uygulamada kendiliğinden görünür.
 
@@ -70,14 +70,14 @@ Albion odaktayken çalışırlar. Başka bir program zaten kullanıyorsa uygulam
 | **Ne zaman çevrilsin** | *Otomatik* ya da *sadece [translate]'e tıkladığımda*. |
 | **Bu kanalları asla gönderme** | Örneğin fısıltılar veya lonca, gizli kalsın istiyorsan. |
 | **Bu kelimeleri asla çevirme** | Lonca adları, arkadaş adları, kendi argon. |
-| **Çevirmenler** | Bu sırayla: **1.** kendi Microsoft Translator veya DeepL anahtarın (isteğe bağlı, en güvenilir), **2.** Google Çeviri (ayar gerekmez), **3.** çevrimdışı yedek. Her biri açılıp kapatılabilir. |
+| **Çevirmenler** | Bu sırayla denenir: **1.** kendi Microsoft Translator veya DeepL anahtarın (isteğe bağlı), **2.** bilgisayarındaki çevrimdışı modeller (hiçbir şey gönderilmez), **3.** Google Çeviri, yalnızca çevrimdışı modeli olmayan diller için. Her biri açılıp kapatılabilir. |
 | **Çevirileri 7 gün hatırla** | Yeniden başlattıktan sonra daha az gönderim. Varsayılan olarak kapalı. |
 
 ## Nasıl çalışır
 
 1. **Sohbeti okuma.** Albion'da eklenti sistemi yok; bu yüzden uygulama, bilinen topluluk araçları gibi oyunun ağ trafiğini okur. Küçük, gizli bir yardımcı bunu yapar ve uygulamaya sadece sohbet mesajlarını iletir. Sadece okur: hiçbir şeyi değiştirmez, göndermez veya enjekte etmez.
 2. **Neyin çevrileceği.** Uygulama, senin bilgisayarında; zaten senin dillerinde olan, çok kısa olan, sadece eşya bağlantısı içeren veya daha önce çevrilmiş mesajları tanır. **Bunlar bilgisayarından asla çıkmaz.** Ayrıca Albion kelimelerini (şehirler, `t8.3` gibi tier'lar, eşya bağlantıları, "gank", "zerg"…) korur ve `lf healer pls` gibi argoyu önce düz İngilizceye çevirir; bu da çeviriyi çok iyileştirir.
-3. **Çeviri.** Geriye kalan, yani sadece mesaj metni, Google Çeviri'ye (veya DeepL'e) gönderilir ve sonuç gösterilir.
+3. **Çeviri.** Geriye kalan, yalnızca mesaj metni, önce bilgisayarındaki çevrimdışı modellerle çevrilir (hiçbir şey gönderilmez). Google Çeviri yalnızca çevrimdışı modeli olmayan diller için kullanılır.
 4. **Cevap.** Yazdığın metin aynı şekilde çevrilir ve panoya konur.
 
 ### Neden yönetici izni istiyor?
