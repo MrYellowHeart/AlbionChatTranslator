@@ -248,8 +248,11 @@ public partial class MainWindow : Window
         }
 
         // Exactly like the game: a message shows in every tab whose channel list includes its channel.
+        // An unassigned room's number is not a channel (room 2 is not Recruit's channel 2), so it
+        // is never matched against the tabs' channel lists.
         var targets = _settings.Tabs.Count == 0
             ? _tabs.Where(t => t.Name == FallbackTabName).ToList()
+            : !known ? []
             : _settings.Tabs.Where(t => t.Enabled && t.ChannelIds.Contains(line.ChannelId))
                 .Select(t => _tabs.FirstOrDefault(vm => vm.Name.Equals(t.Name, StringComparison.OrdinalIgnoreCase)))
                 .OfType<ChatTabViewModel>().ToList();
