@@ -70,7 +70,7 @@ Albion odaktayken çalışırlar. Başka bir program zaten kullanıyorsa uygulam
 | **Ne zaman çevrilsin** | *Otomatik* ya da *sadece [translate]'e tıkladığımda*. |
 | **Bu kanalları asla gönderme** | Örneğin fısıltılar veya lonca, gizli kalsın istiyorsan. |
 | **Bu kelimeleri asla çevirme** | Lonca adları, arkadaş adları, kendi argon. |
-| **Çevirmen** | Google Çeviri (varsayılan, ayar gerekmez) ya da ücretsiz anahtarınla DeepL, ve *Google meşgulken DeepL kullan*. |
+| **Çevirmenler** | Bu sırayla: **1.** kendi Microsoft Translator veya DeepL anahtarın (isteğe bağlı, en güvenilir), **2.** Google Çeviri (ayar gerekmez), **3.** çevrimdışı yedek. Her biri açılıp kapatılabilir. |
 | **Çevirileri 7 gün hatırla** | Yeniden başlattıktan sonra daha az gönderim. Varsayılan olarak kapalı. |
 
 ## Nasıl çalışır
@@ -102,7 +102,7 @@ Windows, ağ trafiğini okumaya sadece yönetici izniyle izin verir. Uygulama bu
 - Telemetri, analiz, reklam veya sohbet kaydı yok. *Çevirileri hatırla* açılmadıkça diske hiçbir şey yazılmaz.
 - Eklersen DeepL anahtarın Windows hesabınla şifrelenir.
 
-Google Çeviri, Google'ın kendi web araçlarının kullandığı ücretsiz adres üzerinden kullanılır. Anahtar gerekmez ama resmi bir API değildir: Google sınırlayabilir. Uygulama kendiliğinden bekler ve DeepL devralabilir.
+Google Çeviri, Google'ın kendi web araçlarının kullandığı ücretsiz adres üzerinden kullanılır. Anahtar gerekmez ama resmi bir API değildir ve Google bağlantı başına sıkı şekilde sınırlar; hareketli bir sohbet sınıra dakikalar içinde ulaşabilir. Bu olduğunda uygulama kenara çekilir ve **çevrimdışı yedek** (bilgisayarında çalışan, hiçbir şey göndermeyen bir model; bir dil ilk kez gerektiğinde yaklaşık 110 MB indirir) ya da kendi anahtarın devralır, böylece çeviri durmaz. En güvenilir hizmet için ücretsiz bir Microsoft Translator veya DeepL anahtarı ekle.
 
 ## Açık kaynak: kendin kontrol et
 
@@ -132,7 +132,7 @@ Uygulama, diğer Albion topluluk araçları gibi ağ trafiğini sadece **okur**.
 - **"Administrator permission was declined".** Start'a tekrar tıkla ve *Evet*'i seç. Windows hesabın yönetici değilse bir yöneticinin onaylaması gerekir.
 - **Windows SmartScreen kurulum dosyası için uyarıyor.** Sürümler henüz imzalı değil. Dosya özetini kontrol et (yukarıda), *Daha fazla bilgi → Yine de çalıştır*'ı seç ya da kendin derle.
 - **Bir kısayol çalışmıyor.** Başka bir program kullanıyor; uygulama hangisi olduğunu söyler. Düğmeleri kullan.
-- **"Translation paused".** Google kısa süreliğine istekleri sınırlıyor; uygulama kendisi tekrar dener. DeepL anahtarı bunu önler.
+- **"Google is limiting requests; translating offline".** Google'ın ücretsiz adresinin sınırı düşüktür. Çevrimdışı yedek devralır; bir dil için ilk seferde paketini indirir, bu yüzden ilk birkaç satır çevrilmemiş görünebilir. Ücretsiz bir Microsoft veya DeepL anahtarı bunu önler.
 
 ## Lisans
 

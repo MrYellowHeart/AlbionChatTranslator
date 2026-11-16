@@ -4,7 +4,7 @@
 
 Read Albion Online chat in your own language, and reply in theirs.
 
-Free, no account, no API key, no setup. **Open source**: every line of code is public so anyone can check what it does.
+Free, no account, no API key, no setup. Keeps translating even when online services are busy. **Open source**: every line of code is public so anyone can check what it does.
 
 ---
 
@@ -73,7 +73,7 @@ They work while Albion has focus. If another program already uses one, the app t
 | **When to translate** | *Automatically*, or *only when I click [translate]* on a message. |
 | **Never send these channels** | For example whispers or guild chat, if you want them to stay private. |
 | **Never translate these words** | Guild names, friends' names, your own slang. |
-| **Translator** | Google Translate (default, no setup) or DeepL with your own free key, and *use DeepL when Google is busy*. |
+| **Translators** | Tried in order: **1.** your own Microsoft Translator or DeepL key (optional, most reliable), **2.** Google Translate (no setup), **3.** the offline backup. Each can be turned on or off. |
 | **Remember translations for 7 days** | Fewer messages sent after a restart. Off by default. |
 | **Overlay** | Background opacity, and *show only translated messages*. |
 
@@ -90,7 +90,12 @@ They work while Albion has focus. If another program already uses one, the app t
 
 1. **Reading chat.** Albion has no add-on system, so the app reads the game's network traffic, the same way established Albion community tools do. A small hidden helper does this and passes only chat messages to the app. It reads; it never changes, sends or injects anything.
 2. **Deciding what to translate.** On your PC, the app recognises messages that are already in your languages, too short, only item links, or translated before. **Those never leave your PC.** It also protects Albion words (city names, tiers like `t8.3`, item links, "gank", "zerg"…) so they come back unchanged, and it turns gamer shorthand like `lf healer pls` into plain English first, which gives much better translations.
-3. **Translating.** What is left, only the message text, is sent to Google Translate (or DeepL) and the result is shown.
+3. **Translating.** What is left, only the message text, goes through a chain of translators, each used only when the one before can't answer:
+   1. **Your own key** (optional): Microsoft Translator (2,000,000 characters free) or DeepL (500,000/month free). Official services with published limits.
+   2. **Google Translate**: no setup. Lines that arrive together share one request, and requests are spaced out; if Google still says "slow down", the app steps aside for a while instead of retrying.
+   3. **Offline backup**: an OPUS-MT model running on your PC. Nothing is sent. The first time a language is needed it downloads about 110 MB (pinned and checksum-verified); it uses about 200 MB more memory only while translating and frees it after 3 idle minutes.
+
+   Lines translated offline are marked `(Spanish · offline)` so you know.
 4. **Replying.** Your typed text is translated the same way and put on your clipboard.
 
 ### Why does it ask for administrator rights?
@@ -103,20 +108,21 @@ Windows only lets programs read network traffic with administrator rights. The a
 
 ## Privacy
 
-| Sent to Google Translate (or DeepL) | Never sent anywhere |
+| Sent to the online translator (your key's service, or Google) | Never sent anywhere |
 |---|---|
 | The **text** of messages that are not in your languages | Messages in your languages, short messages, repeats |
 | The text you type into the reply box | Player names, channels, guild names, item links |
 | | Your account, character, or any game data |
 | | Anything from channels you excluded |
+| | Anything the offline backup translates |
 
 - Everything goes over HTTPS in the request body (never in a web address), with no cookies, no account and no app identifier. Like any website, Google sees your internet (IP) address.
 - The status bar counts every message that left your PC (*Sent for translation*).
 - No telemetry, no analytics, no ads, no chat logs. Nothing is written to disk unless you turn on *Remember translations*.
 - A DeepL key, if you add one, is encrypted with your Windows account.
-- The only other connection is to github.com, to check for updates.
+- Other connections: github.com (update checks) and huggingface.co (offline backup packs, only when one is first needed).
 
-Google Translate is used through the free endpoint Google's own web widgets use. It needs no key, but it is not an official API: Google could slow it down or change it. The app backs off automatically, and DeepL can take over.
+Google Translate is used through the free endpoint Google's own web widgets use. It needs no key, but it is not an official API and Google limits it sharply per internet connection; busy chat can hit that within minutes. When it does, the app steps aside and the offline backup (or your own key) takes over, so translation does not stop. For the most dependable service, add a free Microsoft Translator or DeepL key.
 
 ## Open source: review it yourself
 
@@ -128,7 +134,8 @@ This project is **free and open source** under the [GNU GPL v3](LICENSE). You do
 | Only chat events are parsed | [`ChatEventParser.cs`](src/AlbionChatTranslator.Core/Chat/ChatEventParser.cs) |
 | The admin helper and the app talk one way, current user only | [`CaptureClient.cs`](src/AlbionChatTranslator.Core/Ipc/CaptureClient.cs), [`PipeProtocol.cs`](src/AlbionChatTranslator.Core/Ipc/PipeProtocol.cs) |
 | What is filtered out before anything is sent | [`TranslationService.cs`](src/AlbionChatTranslator.Core/Translation/TranslationService.cs), [`LanguageDetector.cs`](src/AlbionChatTranslator.Core/Translation/LanguageDetector.cs) |
-| Exactly what is sent to Google, and how | [`Providers.cs`](src/AlbionChatTranslator.Core/Translation/Providers.cs) (`GoogleProvider`) |
+| Exactly what is sent to Google, Microsoft or DeepL, and how; the order they are tried in | [`Providers.cs`](src/AlbionChatTranslator.Core/Translation/Providers.cs) (`ChainProvider`, `GoogleProvider`, `MicrosoftProvider`) |
+| The offline backup downloads only pinned, checksum-verified files and sends nothing | [`OfflineProvider.cs`](src/AlbionChatTranslator.Core/Translation/OfflineProvider.cs), [`ModelStore.cs`](src/AlbionChatTranslator.Core/Translation/ModelStore.cs), [`model-catalog.json`](src/AlbionChatTranslator.Core/Translation/model-catalog.json) |
 | Albion words and item links are masked | [`Glossary.cs`](src/AlbionChatTranslator.Core/Translation/Glossary.cs) |
 | Settings and the encrypted DeepL key | [`AppSettings.cs`](src/AlbionChatTranslator.Core/Settings/AppSettings.cs) |
 | These behaviours are tested | [`tests/`](tests/AlbionChatTranslator.Tests) |
@@ -147,7 +154,7 @@ The app only **reads** network traffic, like other Albion community tools. It do
 - **"Administrator permission was declined."** Click Start again and choose *Yes*. If your Windows account is not an administrator, an administrator has to approve it.
 - **Windows SmartScreen warns about the installer.** Releases are not code-signed yet. Check the file hash (see above), choose *More info → Run anyway*, or build it yourself.
 - **A hotkey does nothing.** Another program uses it; the app says which. Use the buttons instead.
-- **"Translation paused."** Google is limiting requests for a moment; the app retries by itself. Adding a DeepL key avoids this.
+- **"Google is limiting requests; translating offline."** Google's free endpoint has a low limit. The offline backup takes over; the first time for a language it downloads its pack, so the first few lines may show untranslated. Adding a free Microsoft or DeepL key avoids this entirely.
 - **After a big Albion update** chat may stop appearing until the app updates itself.
 
 ## For developers
@@ -168,6 +175,8 @@ dotnet publish src/AlbionChatTranslator -c Release -o publish
 ```
 
 - Live test against Google: set `ACT_LIVE_GOOGLE=1` before `dotnet test`.
+- Real offline-model tests (download ~230 MB once): set `ACT_MODEL_DIR` to a folder to keep the models in.
+- Offline packs are pinned in `model-catalog.json`; regenerate it with `tools/update_model_catalog.py`.
 - Portable / test runs: set `ACT_DATA_DIR` to keep settings in that folder instead of your Windows profile.
 - **After an Albion patch** that renumbers network events: run `tools/update_vendored.sh`, then the tests. The app looks events up by name, so refreshing the copied code is enough.
 - **Releasing:** push a tag like `v2.0.0`; [`release.yml`](.github/workflows/release.yml) tests, builds and publishes the installer, update feed and checksums.
@@ -176,8 +185,9 @@ dotnet publish src/AlbionChatTranslator -c Release -o publish
 
 - Original Albion Chat Translator by **Tenith**.
 - Network decoding: [AlbionOnline-StatisticsAnalysis](https://github.com/Triky313/AlbionOnline-StatisticsAnalysis) (GPL-3.0).
-- Translation: Google Translate, or [DeepL](https://www.deepl.com) with your own key.
+- Translation: Google Translate, [Microsoft Translator](https://learn.microsoft.com/azure/ai-services/translator/) or [DeepL](https://www.deepl.com) with your own key, and offline [OPUS-MT](https://github.com/Helsinki-NLP/Opus-MT) models (University of Helsinki, CC-BY 4.0; ONNX versions by [Xenova](https://huggingface.co/Xenova)).
 - Local language recognition: [Lingua](https://github.com/searchpioneer/lingua-dotnet) (Apache-2.0).
+- Offline runtime: [ONNX Runtime](https://onnxruntime.ai) (MIT).
 - Installer and updates: [Velopack](https://velopack.io) (MIT).
 
 Licensed under the **GNU GPL v3** ([`LICENSE`](LICENSE)): you may use, study, share and modify it; modified versions you share must stay open source under the same licence.

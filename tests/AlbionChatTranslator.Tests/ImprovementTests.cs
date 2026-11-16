@@ -1,6 +1,7 @@
 using AlbionChatTranslator.Core.Chat;
 using AlbionChatTranslator.Core.Settings;
 using AlbionChatTranslator.Core.Translation;
+using static AlbionChatTranslator.Tests.ServiceHelpers;
 
 namespace AlbionChatTranslator.Tests;
 
@@ -44,31 +45,12 @@ public class PrivacyControlTests
 {
     private static readonly ChatLanguageDetector Detector = new();
 
-    private sealed class Recording(string src) : ITranslationProvider
-    {
-        public readonly List<string> Sent = [];
-        public string Name => "rec";
-
-        public Task<ProviderResult> TranslateAsync(string text, string? source, string target, CancellationToken ct)
-        {
-            lock (Sent) Sent.Add(text);
-            return Task.FromResult(new ProviderResult(ProviderOutcome.Translated, "T:" + text, src));
-        }
-
-        public void Dispose() { }
-    }
-
-    private static async Task<TranslationResult> Submit(TranslationService svc, string text)
-    {
-        var tcs = new TaskCompletionSource<TranslationResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-        svc.Submit(text, tcs.SetResult);
-        return await tcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
-    }
+    private static FakeProvider Recording(string src) => new(t => ("T:" + t, src));
 
     [Fact]
     public async Task Languages_the_reader_understands_are_never_sent()
     {
-        var provider = new Recording("es");
+        var provider = Recording("es");
         await using var svc = new TranslationService(Detector, provider)
         {
             TargetLanguage = "en",
@@ -83,7 +65,7 @@ public class PrivacyControlTests
     [Fact]
     public async Task Readers_extra_language_reported_by_the_service_is_shown_as_is()
     {
-        var provider = new Recording("pt");
+        var provider = Recording("pt");
         await using var svc = new TranslationService(Detector, provider)
         {
             TargetLanguage = "en",
@@ -96,7 +78,7 @@ public class PrivacyControlTests
     [Fact]
     public async Task English_shorthand_is_expanded_before_sending_for_non_english_readers()
     {
-        var provider = new Recording("en");
+        var provider = Recording("en");
         await using var svc = new TranslationService(Detector, provider) { TargetLanguage = "pt" };
 
         await Submit(svc, "lf healer for hg pls");
@@ -106,7 +88,7 @@ public class PrivacyControlTests
     [Fact]
     public async Task Replies_in_english_shorthand_are_expanded_too()
     {
-        var provider = new Recording("en");
+        var provider = Recording("en");
         await using var svc = new TranslationService(Detector, provider) { TargetLanguage = "en" };
 
         var r = await svc.TranslateReplyAsync("inv me to party pls", "pt", TestContext.Current.CancellationToken);
@@ -117,46 +99,12 @@ public class PrivacyControlTests
     [Fact]
     public async Task Non_english_text_is_not_expanded()
     {
-        var provider = new Recording("pl");
+        var provider = Recording("pl");
         await using var svc = new TranslationService(Detector, provider) { TargetLanguage = "en" };
 
         // "np" and "ty" are ordinary Polish words here.
         await Submit(svc, "ty idziesz np do lochu dzisiaj wieczorem");
         Assert.Equal("ty idziesz np do lochu dzisiaj wieczorem", Assert.Single(provider.Sent));
-    }
-}
-
-public class FallbackProviderTests
-{
-    private sealed class Fixed(ProviderOutcome outcome, string name) : ITranslationProvider
-    {
-        public int Calls;
-        public string Name => name;
-
-        public Task<ProviderResult> TranslateAsync(string text, string? source, string target, CancellationToken ct)
-        {
-            Calls++;
-            return Task.FromResult(new ProviderResult(outcome, outcome == ProviderOutcome.Translated ? name : null, Message: name));
-        }
-
-        public void Dispose() { }
-    }
-
-    [Fact]
-    public async Task Backup_is_used_only_when_the_primary_cannot_translate()
-    {
-        var google = new Fixed(ProviderOutcome.Translated, "google");
-        var deepl = new Fixed(ProviderOutcome.Translated, "deepl");
-        var r = await new FallbackProvider(google, deepl).TranslateAsync("x", null, "en", TestContext.Current.CancellationToken);
-        Assert.Equal(("google", 0), (r.Text, deepl.Calls));
-
-        var busy = new Fixed(ProviderOutcome.Busy, "google");
-        r = await new FallbackProvider(busy, deepl).TranslateAsync("x", null, "en", TestContext.Current.CancellationToken);
-        Assert.Equal("deepl", r.Text);
-
-        var down = new Fixed(ProviderOutcome.Failed, "deepl");
-        r = await new FallbackProvider(busy, down).TranslateAsync("x", null, "en", TestContext.Current.CancellationToken);
-        Assert.Equal((ProviderOutcome.Busy, "google"), (r.Outcome, r.Message)); // report the primary's reason
     }
 }
 
@@ -169,26 +117,7 @@ public sealed class CacheAndSettingsTests : IDisposable
         if (Directory.Exists(_dir)) Directory.Delete(_dir, true);
     }
 
-    private sealed class Counting : ITranslationProvider
-    {
-        public int Calls;
-        public string Name => "count";
-
-        public Task<ProviderResult> TranslateAsync(string text, string? source, string target, CancellationToken ct)
-        {
-            Interlocked.Increment(ref Calls);
-            return Task.FromResult(new ProviderResult(ProviderOutcome.Translated, "T:" + text, "es"));
-        }
-
-        public void Dispose() { }
-    }
-
-    private static async Task<TranslationResult> Submit(TranslationService svc, string text)
-    {
-        var tcs = new TaskCompletionSource<TranslationResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-        svc.Submit(text, tcs.SetResult);
-        return await tcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
-    }
+    private static FakeProvider Counting() => new(t => ("T:" + t, "es"));
 
     [Fact]
     public async Task Saved_translations_are_reused_after_a_restart_and_can_be_forgotten()
@@ -197,21 +126,21 @@ public sealed class CacheAndSettingsTests : IDisposable
         const string line = "vamos a la mazmorra corrupta, necesitamos un sanador";
         var detector = new ChatLanguageDetector();
 
-        var first = new Counting();
+        var first = Counting();
         await using (var svc = new TranslationService(detector, first) { TargetLanguage = "en" })
         {
             await Submit(svc, line);
             svc.SaveCache(path);
         }
-        Assert.Equal(1, first.Calls);
+        Assert.Single(first.Calls);
 
-        var second = new Counting();
+        var second = Counting();
         await using (var svc = new TranslationService(detector, second) { TargetLanguage = "en" })
         {
             svc.LoadCache(path);
             var r = await Submit(svc, line);
             Assert.Equal(TranslationOutcome.Translated, r.Outcome);
-            Assert.Equal(0, second.Calls);
+            Assert.Empty(second.Calls);
 
             svc.ClearCache(path);
             Assert.False(File.Exists(path));
@@ -224,7 +153,7 @@ public sealed class CacheAndSettingsTests : IDisposable
         var path = Path.Combine(_dir, "old.json");
         Directory.CreateDirectory(_dir);
         File.WriteAllText(path, $$"""[{"Key":"en\u0001hola amigos","Text":"hi friends","Source":"es","SavedAt":"{{DateTimeOffset.UtcNow.AddDays(-8):O}}"}]""");
-        var svc = new TranslationService(new ChatLanguageDetector(), new Counting());
+        var svc = new TranslationService(new ChatLanguageDetector(), Counting());
         svc.LoadCache(path);
         var hit = false;
         svc.Submit("hola amigos", r => hit = r.Text == "hi friends" && r.Outcome == TranslationOutcome.Translated);

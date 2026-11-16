@@ -70,7 +70,7 @@ Funcionan con Albion en primer plano. Si otro programa ya usa alguno, la app te 
 | **Cuándo traducir** | *Automáticamente* o *solo cuando haga clic en [translate]*. |
 | **No enviar nunca estos canales** | Por ejemplo susurros o gremio, si quieres que sean privados. |
 | **No traducir nunca estas palabras** | Nombres de gremio, de amigos, tu propia jerga. |
-| **Traductor** | Google Translate (por defecto, sin configurar) o DeepL con tu clave gratuita, y *usar DeepL cuando Google esté ocupado*. |
+| **Traductores** | En este orden: **1.** tu propia clave de Microsoft Translator o DeepL (opcional, lo más fiable), **2.** Google Translate (sin configurar), **3.** la copia de seguridad sin conexión. Cada uno se puede activar o desactivar. |
 | **Recordar traducciones 7 días** | Menos mensajes enviados tras reiniciar. Desactivado por defecto. |
 
 ## Cómo funciona
@@ -102,7 +102,7 @@ Windows solo deja leer el tráfico de red con permisos de administrador. La app 
 - Sin telemetría, sin analíticas, sin anuncios, sin registros del chat. No se guarda nada en disco salvo que actives *Recordar traducciones*.
 - Una clave de DeepL, si la añades, se cifra con tu cuenta de Windows.
 
-Google Translate se usa mediante la dirección gratuita que usan los propios widgets de Google. No necesita clave, pero no es una API oficial: Google podría limitarla. La app espera sola, y DeepL puede tomar el relevo.
+Google Translate se usa mediante la dirección gratuita que usan los propios widgets de Google. No necesita clave, pero no es una API oficial y Google la limita mucho por conexión; un chat movido puede alcanzar el límite en minutos. Cuando pasa, la app se aparta un rato y toma el relevo la **copia sin conexión** (un modelo que funciona en tu PC y no envía nada; descarga unos 110 MB por idioma la primera vez) o tu propia clave, así que la traducción no se detiene. Para el servicio más fiable, añade una clave gratuita de Microsoft Translator o DeepL.
 
 ## Código abierto: compruébalo tú mismo
 
@@ -132,7 +132,7 @@ La app solo **lee** el tráfico de red, como otras herramientas de la comunidad 
 - **"Administrator permission was declined".** Vuelve a pulsar Start y elige *Sí*. Si tu cuenta de Windows no es administradora, un administrador tiene que aprobarlo.
 - **Windows SmartScreen avisa sobre el instalador.** Las versiones aún no están firmadas. Comprueba el hash (arriba), elige *Más información → Ejecutar de todas formas*, o compílalo tú.
 - **Un atajo no hace nada.** Otro programa ya lo usa; la app dice cuál. Usa los botones.
-- **"Translation paused".** Google está limitando peticiones un momento; la app reintenta sola. Una clave de DeepL lo evita.
+- **"Google is limiting requests; translating offline".** La dirección gratuita de Google tiene un límite bajo. La copia sin conexión toma el relevo; la primera vez para un idioma descarga su paquete, así que las primeras líneas pueden verse sin traducir. Una clave gratuita de Microsoft o DeepL lo evita.
 
 ## Licencia
 

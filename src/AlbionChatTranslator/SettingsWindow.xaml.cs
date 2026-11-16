@@ -1,8 +1,10 @@
 using AlbionChatTranslator.Core.Chat;
 using AlbionChatTranslator.Core.Settings;
 using AlbionChatTranslator.Core.Translation;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Navigation;
 
 namespace AlbionChatTranslator;
 
@@ -10,15 +12,21 @@ public partial class SettingsWindow : Window
 {
     private readonly AppSettings _settings;
     private readonly Action _clearCache;
+    private readonly ModelStore _store;
+    private string _microsoftKey, _deepLKey;
+    private KeyService _shownService = KeyService.None;
     private readonly List<(CheckBox Box, TabSetting Tab)> _tabBoxes = [];
     private readonly List<(CheckBox Box, string Code)> _readBoxes = [];
     private readonly (CheckBox Box, ChannelKind Kind)[] _channelBoxes;
 
-    public SettingsWindow(AppSettings settings, Action clearCache)
+    public SettingsWindow(AppSettings settings, Action clearCache, ModelStore store)
     {
         InitializeComponent();
         _settings = settings;
         _clearCache = clearCache;
+        _store = store;
+        _microsoftKey = settings.MicrosoftKey ?? string.Empty;
+        _deepLKey = settings.DeepLKey ?? string.Empty;
 
         var targets = Languages.All.ToList();
         CboLanguage.ItemsSource = targets;
@@ -40,10 +48,12 @@ public partial class SettingsWindow : Window
         ];
         foreach (var (box, kind) in _channelBoxes) box.IsChecked = settings.NeverSendChannels.Contains(kind);
 
-        RbGoogle.IsChecked = settings.Provider == ProviderChoice.Google;
-        RbDeepL.IsChecked = settings.Provider == ProviderChoice.DeepL;
-        TxtDeepLKey.Password = settings.DeepLKey ?? string.Empty;
-        CbDeepLBackup.IsChecked = settings.DeepLAsBackup;
+        TxtRegion.Text = settings.MicrosoftRegion ?? string.Empty;
+        CboKeyService.SelectedIndex = (int)settings.KeyService;
+        ShowKeyFields(settings.KeyService);
+        CbUseGoogle.IsChecked = settings.UseGoogle;
+        CbOffline.IsChecked = settings.OfflineFallback;
+        ShowPackSize();
         TxtCustomTerms.Text = string.Join(", ", settings.CustomTerms);
         CbKeepCache.IsChecked = settings.KeepCacheOnDisk;
         SliderOpacity.Value = settings.OverlayOpacity;
@@ -65,6 +75,58 @@ public partial class SettingsWindow : Window
         }
     }
 
+    private KeyService SelectedService => (KeyService)Math.Max(0, CboKeyService.SelectedIndex);
+
+    private void CboKeyService_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsInitialized || TxtKey is null) return;
+        StashKey();
+        ShowKeyFields(SelectedService);
+    }
+
+    /// <summary>Remembers what was typed for the service currently shown, so switching does not lose it.</summary>
+    private void StashKey()
+    {
+        if (_shownService == KeyService.Microsoft) _microsoftKey = TxtKey.Password;
+        else if (_shownService == KeyService.DeepL) _deepLKey = TxtKey.Password;
+    }
+
+    private void ShowKeyFields(KeyService service)
+    {
+        _shownService = service;
+        KeyPanel.Visibility = service == KeyService.None ? Visibility.Collapsed : Visibility.Visible;
+        RegionPanel.Visibility = service == KeyService.Microsoft ? Visibility.Visible : Visibility.Collapsed;
+        TxtKey.Password = service switch { KeyService.Microsoft => _microsoftKey, KeyService.DeepL => _deepLKey, _ => string.Empty };
+        LinkKeyHelp.NavigateUri = new Uri(service == KeyService.DeepL
+            ? "https://www.deepl.com/en/pro-api"
+            : "https://learn.microsoft.com/azure/ai-services/translator/create-translator-resource");
+    }
+
+    private void Link_RequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        if (e.Uri.Scheme == Uri.UriSchemeHttps)
+            Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        e.Handled = true;
+    }
+
+    private void ShowPackSize()
+    {
+        long bytes = _store.InstalledBytes();
+        TxtPacks.Text = bytes == 0 ? "No offline packs downloaded yet" : $"Offline packs on disk: {bytes / 1_000_000} MB";
+    }
+
+    private void BtnDeletePacks_Click(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show(this, "Delete all offline language packs? They download again when needed.",
+                "Offline packs", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+        try { _store.DeleteAll(); }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, "Some packs are in use. Restart the app and try again.", "Offline packs");
+        }
+        ShowPackSize();
+    }
+
     private void BtnClearCache_Click(object sender, RoutedEventArgs e)
     {
         _clearCache();
@@ -73,9 +135,17 @@ public partial class SettingsWindow : Window
 
     private void BtnSave_Click(object sender, RoutedEventArgs e)
     {
-        if (RbDeepL.IsChecked == true && string.IsNullOrWhiteSpace(TxtDeepLKey.Password))
+        StashKey();
+        var service = SelectedService;
+        var key = service switch { KeyService.Microsoft => _microsoftKey, KeyService.DeepL => _deepLKey, _ => "x" };
+        if (string.IsNullOrWhiteSpace(key))
         {
-            MessageBox.Show(this, "Enter a DeepL API key or choose Google Translate.", "Settings");
+            MessageBox.Show(this, "Enter the key for the service you chose, or choose None.", "Settings");
+            return;
+        }
+        if (service == KeyService.None && CbUseGoogle.IsChecked != true && CbOffline.IsChecked != true)
+        {
+            MessageBox.Show(this, "Turn on at least one translator.", "Settings");
             return;
         }
 
@@ -83,9 +153,12 @@ public partial class SettingsWindow : Window
         _settings.ReadLanguages = _readBoxes.Where(r => r.Box.IsChecked == true && r.Code != _settings.TargetLanguage).Select(r => r.Code).ToList();
         _settings.Mode = RbOnClick.IsChecked == true ? TranslateMode.OnClick : TranslateMode.Automatic;
         _settings.NeverSendChannels = _channelBoxes.Where(c => c.Box.IsChecked == true).Select(c => c.Kind).ToList();
-        _settings.Provider = RbDeepL.IsChecked == true ? ProviderChoice.DeepL : ProviderChoice.Google;
-        _settings.DeepLKey = TxtDeepLKey.Password;
-        _settings.DeepLAsBackup = CbDeepLBackup.IsChecked == true;
+        _settings.KeyService = service;
+        _settings.MicrosoftKey = _microsoftKey;
+        _settings.DeepLKey = _deepLKey;
+        _settings.MicrosoftRegion = string.IsNullOrWhiteSpace(TxtRegion.Text) ? null : TxtRegion.Text.Trim();
+        _settings.UseGoogle = CbUseGoogle.IsChecked == true;
+        _settings.OfflineFallback = CbOffline.IsChecked == true;
         _settings.CustomTerms = TxtCustomTerms.Text.Split([',', ';', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         _settings.KeepCacheOnDisk = CbKeepCache.IsChecked == true;

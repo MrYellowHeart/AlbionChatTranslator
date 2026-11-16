@@ -19,11 +19,13 @@ public partial class MainWindow : Window
 
     private readonly AppSettings _settings;
     private readonly GoogleProvider _google = new();
+    private readonly OfflineProvider _offline;
     private readonly TranslationService _translation;
     private readonly Updater _updater = new();
     private readonly ObservableCollection<ChatTabViewModel> _tabs = [];
     private readonly ObservableCollection<ChatEntry> _overlayFeed = [];
-    private ITranslationProvider? _deepL;
+    private ITranslationProvider? _keyed;
+    private int _lastProgressPercent = -1;
     private CaptureClient? _capture;
     private OverlayWindow? _overlay;
     private GlobalHotkeys? _hotkeys;
@@ -39,6 +41,13 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         _settings = AppSettings.Load();
+        _offline = new OfflineProvider(ModelCatalog.LoadEmbedded(), new ModelStore(ModelStore.DefaultRoot));
+        _offline.Store.Progress += OnDownloadProgress;
+        _offline.DownloadFinished += (pack, error) => Dispatcher.InvokeAsync(() =>
+        {
+            _lastProgressPercent = -1;
+            TxtActivity.Text = error is null ? "Offline language pack ready" : $"Offline language pack failed: {error}";
+        });
         var detector = new ChatLanguageDetector();
         _translation = new TranslationService(detector, _google);
         _ = Task.Run(detector.WarmUp); // so the first chat line is not slow
@@ -76,7 +85,8 @@ public partial class MainWindow : Window
         {
             await _translation.DisposeAsync();
             _google.Dispose();
-            _deepL?.Dispose();
+            _offline.Dispose();
+            _keyed?.Dispose();
         };
     }
 
@@ -90,24 +100,22 @@ public partial class MainWindow : Window
         _translation.ReadLanguages = _settings.ReadLanguages.ToHashSet();
         Glossary.SetCustomTerms(_settings.CustomTerms);
 
-        _deepL?.Dispose();
-        _deepL = _settings.DeepLKey is { Length: > 0 } key ? new DeepLProvider(key) : null;
-        var target = Languages.NameOf(_settings.TargetLanguage);
-        if (_settings.Provider == ProviderChoice.DeepL && _deepL is not null)
+        // Translators are tried in order: your own key, then Google, then offline.
+        _keyed?.Dispose();
+        _keyed = _settings.KeyService switch
         {
-            _translation.Provider = _deepL;
-            TxtProvider.Text = $"DeepL → {target}";
-        }
-        else if (_settings.DeepLAsBackup && _deepL is not null)
-        {
-            _translation.Provider = new FallbackProvider(_google, _deepL);
-            TxtProvider.Text = $"Google (DeepL backup) → {target}";
-        }
-        else
-        {
-            _translation.Provider = _google;
-            TxtProvider.Text = $"Google → {target}";
-        }
+            KeyService.Microsoft when _settings.MicrosoftKey is { Length: > 0 } k => new MicrosoftProvider(k, _settings.MicrosoftRegion),
+            KeyService.DeepL when _settings.DeepLKey is { Length: > 0 } k => new DeepLProvider(k),
+            _ => null,
+        };
+        var chain = new List<ITranslationProvider>();
+        if (_keyed is not null) chain.Add(_keyed);
+        if (_settings.UseGoogle || chain.Count == 0 && !_settings.OfflineFallback) chain.Add(_google);
+        if (_settings.OfflineFallback) chain.Add(_offline);
+        _translation.Provider = new ChainProvider(chain);
+        _translation.Offline = _settings.OfflineFallback ? _offline : null;
+
+        TxtProvider.Text = $"{string.Join(" → ", chain.Select(p => p.Name))} · into {Languages.NameOf(_settings.TargetLanguage)}";
         if (_settings.Mode == TranslateMode.OnClick) TxtProvider.Text += " · click to translate";
 
         if (!_settings.KeepCacheOnDisk) _translation.ClearCacheFile(AppSettings.CachePath);
@@ -225,6 +233,8 @@ public partial class MainWindow : Window
             {
                 TxtActivity.Text = msg;
             }
+            if (result.By == "Offline" && _google.PausedUntil is { } until)
+                TxtActivity.Text = $"Google is limiting requests; translating offline until {until.ToLocalTime():HH:mm}";
         }));
     }
 
@@ -314,7 +324,7 @@ public partial class MainWindow : Window
 
     private void BtnSettings_Click(object sender, RoutedEventArgs e)
     {
-        var window = new SettingsWindow(_settings, () => _translation.ClearCache(AppSettings.CachePath)) { Owner = this };
+        var window = new SettingsWindow(_settings, () => _translation.ClearCache(AppSettings.CachePath), _offline.Store) { Owner = this };
         if (window.ShowDialog() == true)
         {
             _settings.Save();
@@ -324,6 +334,14 @@ public partial class MainWindow : Window
 
     private void BtnHelp_Click(object sender, RoutedEventArgs e) =>
         new HelpWindow { Owner = this }.ShowDialog();
+
+    private void OnDownloadProgress(string pack, long done, long total)
+    {
+        int percent = total == 0 ? 100 : (int)(done * 100 / total);
+        if (percent == _lastProgressPercent) return;
+        _lastProgressPercent = percent;
+        Dispatcher.InvokeAsync(() => TxtActivity.Text = $"Downloading offline backup pack ({pack}): {percent}% of {total / 1_000_000} MB");
+    }
 
     // ── Updates ──────────────────────────────────────────────────────────────
 

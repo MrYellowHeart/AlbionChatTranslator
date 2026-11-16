@@ -159,13 +159,13 @@ public sealed class ProviderMigrationTests : IDisposable
     }
 
     [Fact]
-    public void Offline_build_settings_move_to_google()
+    public void Earlier_2_0_settings_load_with_no_key_service()
     {
         Directory.CreateDirectory(_dir);
         File.WriteAllText(Path.Combine(_dir, "settings.json"),
             "{ \"Version\": 2, \"TargetLanguage\": \"de\", \"Provider\": \"Offline\", \"AutoDownloadLanguagePacks\": true }");
         var s = AppSettings.Load(_dir);
-        Assert.Equal((ProviderChoice.Google, "de"), (s.Provider, s.TargetLanguage));
+        Assert.Equal((KeyService.None, "de"), (s.KeyService, s.TargetLanguage));
     }
 
     [Fact]
@@ -173,10 +173,10 @@ public sealed class ProviderMigrationTests : IDisposable
     {
         Directory.CreateDirectory(_dir);
         File.WriteAllText(Path.Combine(_dir, "settings.json"), "{ \"ApiKey\": \"k:fx\" }");
-        Assert.Equal(ProviderChoice.DeepL, AppSettings.Load(_dir).Provider);
+        Assert.Equal(KeyService.DeepL, AppSettings.Load(_dir).KeyService);
         Directory.Delete(_dir, true);
         Directory.CreateDirectory(_dir);
         File.WriteAllText(Path.Combine(_dir, "settings.json"), "{ \"TargetLanguage\": \"FR\" }");
-        Assert.Equal(ProviderChoice.Google, AppSettings.Load(_dir).Provider);
+        Assert.Equal(KeyService.None, AppSettings.Load(_dir).KeyService);
     }
 }

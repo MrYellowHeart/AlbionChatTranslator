@@ -8,31 +8,40 @@ public enum TranslationOutcome
 {
     /// <summary>Text was translated; <see cref="TranslationResult.Text"/> holds it.</summary>
     Translated,
-    /// <summary>Already in the reader's language.</summary>
+    /// <summary>Already in a language the reader understands.</summary>
     SameLanguage,
     /// <summary>Too short or only links/numbers: show as-is.</summary>
     Skipped,
-    /// <summary>The service asked us to slow down; shown untranslated.</summary>
+    /// <summary>Every translator was busy for now; shown untranslated.</summary>
     Busy,
     Failed,
 }
 
-public sealed record TranslationResult(TranslationOutcome Outcome, string? Text = null, string? SourceLanguage = null, string? Message = null)
+/// <param name="By">Which translator produced it ("Google", "Microsoft", "DeepL", "Offline").</param>
+public sealed record TranslationResult(
+    TranslationOutcome Outcome,
+    string? Text = null,
+    string? SourceLanguage = null,
+    string? Message = null,
+    string? By = null)
 {
-    [JsonIgnore] public DateTimeOffset CachedAt { get; init; } = DateTimeOffset.UtcNow;
-
     public static readonly TranslationResult Skip = new(TranslationOutcome.Skipped);
+
+    [JsonIgnore] public DateTimeOffset CachedAt { get; init; } = DateTimeOffset.UtcNow;
 }
 
 /// <summary>
-/// Decides what is worth translating and sends it one line at a time. Most chat never
-/// leaves the PC: short lines, item links and anything already in the reader's language
-/// are filtered locally, and repeated messages are answered from a cache.
+/// Decides what is worth translating and sends it in small groups. Most chat never leaves the
+/// PC: short lines, item links and anything already in the reader's languages are filtered
+/// locally, and repeated messages are answered from a cache. Lines that arrive close together
+/// share one request, which keeps well under online services' rate limits.
 /// </summary>
 public sealed class TranslationService : IAsyncDisposable
 {
     private const int QueueCapacity = 64;
     private const int CacheCapacity = 2000;
+    private const int MaxBatchLines = 12;
+    private static readonly TimeSpan BatchWindow = TimeSpan.FromMilliseconds(400);
 
     private readonly ChatLanguageDetector _detector;
     private readonly Channel<Job> _queue;
@@ -60,8 +69,8 @@ public sealed class TranslationService : IAsyncDisposable
     /// <summary>Other languages the reader understands: never translated, never sent.</summary>
     public IReadOnlySet<string> ReadLanguages { get; set; } = new HashSet<string>();
 
-    private bool Understands(string? lang, string target) =>
-        lang is not null && (lang == Languages.Normalize(target) || ReadLanguages.Contains(lang));
+    /// <summary>If set, replies wait for a missing offline pack instead of giving up.</summary>
+    public OfflineProvider? Offline { get; set; }
 
     public ITranslationProvider Provider
     {
@@ -73,8 +82,11 @@ public sealed class TranslationService : IAsyncDisposable
         }
     }
 
-    /// <summary>Raised whenever text is about to leave the PC (for the on-screen counter).</summary>
+    /// <summary>Raised once per line that actually left the PC (for the on-screen counter).</summary>
     public event Action? Sent;
+
+    private bool Understands(string? lang, string target) =>
+        lang is not null && (lang == Languages.Normalize(target) || ReadLanguages.Contains(lang));
 
     /// <summary>Queues an incoming chat line. <paramref name="callback"/> runs on a worker thread.</summary>
     public void Submit(string text, Action<TranslationResult> callback)
@@ -105,82 +117,143 @@ public sealed class TranslationService : IAsyncDisposable
         if (!Glossary.HasTranslatableContent(p.Text))
             return new TranslationResult(TranslationOutcome.SameLanguage, text);
 
-        var mine = await Task.Run(() => _detector.Detect(p.Text, TargetLanguage), ct).ConfigureAwait(false);
-        var result = await RunAsync(text, WithPlainEnglish(p, mine), toLanguage, ct).ConfigureAwait(false);
+        var mine = await Task.Run(() => _detector.Detect(p.Text, TargetLanguage), ct).ConfigureAwait(false) ?? TargetLanguage;
+        var masked = WithPlainEnglish(p, mine);
+        var item = new TranslationItem(masked.Text, mine);
+
+        var r = (await _provider.TranslateAsync([item], toLanguage, ct).ConfigureAwait(false))[0];
+        Count(r);
+        if (r.Outcome != ProviderOutcome.Translated && Offline is { } offline)
+            r = await offline.TranslateWaitingAsync(item, toLanguage, ct).ConfigureAwait(false);
+
+        var result = await FinishAsync(text, masked, r, toLanguage, mine, ct).ConfigureAwait(false);
         return result.Outcome == TranslationOutcome.SameLanguage ? result with { Text = text } : result;
     }
 
     private async Task WorkAsync()
     {
+        var reader = _queue.Reader;
+        var ct = _cts.Token;
         try
         {
-            await foreach (var job in _queue.Reader.ReadAllAsync(_cts.Token).ConfigureAwait(false))
+            while (await reader.WaitToReadAsync(ct).ConfigureAwait(false))
             {
-                TranslationResult result;
-                if (_cache.TryGet(job.CacheKey, out var cached))
-                {
-                    result = cached;
-                }
-                else
-                {
-                    result = await ProcessAsync(job, _cts.Token).ConfigureAwait(false);
-                    if (result.Outcome is TranslationOutcome.Translated or TranslationOutcome.SameLanguage && job.Target == TargetLanguage)
-                        _cache.Set(job.CacheKey, result);
-                }
-
-                try { job.Callback(result); }
-                catch (Exception e) { System.Diagnostics.Debug.WriteLine($"[Translation] callback failed: {e}"); }
+                var batch = await CollectBatchAsync(reader, ct).ConfigureAwait(false);
+                await ProcessBatchAsync(batch, ct).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) { }
     }
 
-    private async Task<TranslationResult> ProcessAsync(Job job, CancellationToken ct)
+    /// <summary>Takes what is queued, then waits briefly for lines arriving right behind it.</summary>
+    private static async Task<List<Job>> CollectBatchAsync(ChannelReader<Job> reader, CancellationToken ct)
     {
-        // Privacy filter: lines in a language the reader understands are never sent anywhere.
-        var local = _detector.Detect(job.Protected.Text, job.Target);
-        if (Understands(local, job.Target))
-            return new TranslationResult(TranslationOutcome.SameLanguage, SourceLanguage: local);
-
-        return await RunAsync(job.Text, WithPlainEnglish(job.Protected, local), job.Target, ct).ConfigureAwait(false);
+        var batch = new List<Job>();
+        var deadline = DateTime.UtcNow + BatchWindow;
+        while (batch.Count < MaxBatchLines)
+        {
+            if (reader.TryRead(out var job))
+            {
+                batch.Add(job);
+                continue;
+            }
+            var left = deadline - DateTime.UtcNow;
+            if (left <= TimeSpan.Zero) break;
+            var more = reader.WaitToReadAsync(ct).AsTask();
+            if (await Task.WhenAny(more, Task.Delay(left, ct)).ConfigureAwait(false) != more || !await more.ConfigureAwait(false)) break;
+        }
+        return batch;
     }
 
-    private async Task<TranslationResult> RunAsync(string original, ProtectedText p, string target, CancellationToken ct)
+    private async Task ProcessBatchAsync(List<Job> batch, CancellationToken ct)
     {
-        try
+        var pending = new List<(Job Job, ProtectedText Masked, string? Hint)>();
+        foreach (var job in batch)
         {
-            var provider = _provider;
-            Sent?.Invoke();
-            // Let the service detect the source: it is far better at it than any local model.
-            var r = await provider.TranslateAsync(p.Text, null, target, ct).ConfigureAwait(false);
-            if (r.Outcome != ProviderOutcome.Translated || r.Text is null)
+            if (_cache.TryGet(job.CacheKey, out var cached))
             {
-                return new TranslationResult(r.Outcome == ProviderOutcome.Busy ? TranslationOutcome.Busy : TranslationOutcome.Failed,
-                    Message: r.Message);
+                Deliver(job, cached);
+                continue;
+            }
+            // Privacy filter: lines in a language the reader understands are never sent anywhere.
+            var local = _detector.Detect(job.Protected.Text, job.Target);
+            if (Understands(local, job.Target))
+            {
+                var same = new TranslationResult(TranslationOutcome.SameLanguage, SourceLanguage: local);
+                _cache.Set(job.CacheKey, same);
+                Deliver(job, same);
+                continue;
+            }
+            pending.Add((job, WithPlainEnglish(job.Protected, local), local));
+        }
+
+        // One request per (target, likely language): the translator detects one source language per request.
+        foreach (var group in pending.GroupBy(x => (x.Job.Target, x.Hint)))
+        {
+            var lines = group.ToList();
+            IReadOnlyList<ProviderResult> answers;
+            try
+            {
+                answers = await _provider.TranslateAsync(lines.Select(l => new TranslationItem(l.Masked.Text, l.Hint)).ToList(), group.Key.Target, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception e)
+            {
+                answers = ProviderResults.All(lines.Count, new ProviderResult(ProviderOutcome.Failed, Message: e.Message));
             }
 
-            if (r.SourceLanguage is { } src && Understands(src, target))
-                return new TranslationResult(TranslationOutcome.SameLanguage, SourceLanguage: src);
-
-            var restored = Glossary.Restore(r.Text, p);
-            if (restored is null)
+            for (int i = 0; i < lines.Count; i++)
             {
-                // The service mangled a placeholder. Translate the plain text instead so the
-                // reader still gets a translation, just without term protection.
-                Sent?.Invoke();
-                var retry = await provider.TranslateAsync(Glossary.CleanForDisplay(original), r.SourceLanguage, target, ct).ConfigureAwait(false);
-                restored = retry.Outcome == ProviderOutcome.Translated ? retry.Text : null;
+                var (job, masked, hint) = lines[i];
+                Count(answers[i]);
+                var result = await FinishAsync(job.Text, masked, answers[i], job.Target, hint, ct).ConfigureAwait(false);
+                if (result.Outcome is TranslationOutcome.Translated or TranslationOutcome.SameLanguage && job.Target == TargetLanguage)
+                    _cache.Set(job.CacheKey, result);
+                Deliver(job, result);
             }
+        }
+    }
 
-            return restored is null
-                ? new TranslationResult(TranslationOutcome.Failed, SourceLanguage: r.SourceLanguage, Message: "Translation failed")
-                : new TranslationResult(TranslationOutcome.Translated, restored, r.SourceLanguage);
-        }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception e)
+    /// <summary>Turns a provider answer into what the reader sees, putting Albion terms back.</summary>
+    private async Task<TranslationResult> FinishAsync(string original, ProtectedText masked, ProviderResult r, string target, string? hint, CancellationToken ct)
+    {
+        if (r.Outcome != ProviderOutcome.Translated || r.Text is null)
         {
-            return new TranslationResult(TranslationOutcome.Failed, Message: e.Message);
+            return new TranslationResult(r.Outcome == ProviderOutcome.Busy ? TranslationOutcome.Busy : TranslationOutcome.Failed,
+                SourceLanguage: hint, Message: r.Message, By: r.By);
         }
+
+        var src = r.SourceLanguage ?? hint;
+        if (Understands(src, target))
+            return new TranslationResult(TranslationOutcome.SameLanguage, SourceLanguage: src, By: r.By);
+
+        var restored = Glossary.Restore(r.Text, masked);
+        var by = r.By;
+        if (restored is null)
+        {
+            // The translator mangled a placeholder: translate the plain text instead, so the
+            // reader still gets a translation, just without term protection.
+            var plain = new TranslationItem(Glossary.CleanForDisplay(original), src);
+            var retry = (await _provider.TranslateAsync([plain], target, ct).ConfigureAwait(false))[0];
+            Count(retry);
+            restored = retry.Outcome == ProviderOutcome.Translated ? retry.Text : null;
+            by = retry.By ?? by;
+        }
+
+        return restored is null
+            ? new TranslationResult(TranslationOutcome.Failed, SourceLanguage: src, Message: "Translation failed", By: by)
+            : new TranslationResult(TranslationOutcome.Translated, restored, src, By: by);
+    }
+
+    private void Count(ProviderResult r)
+    {
+        if (r.LeftDevice) Sent?.Invoke();
+    }
+
+    private static void Deliver(Job job, TranslationResult result)
+    {
+        try { job.Callback(result); }
+        catch (Exception e) { System.Diagnostics.Debug.WriteLine($"[Translation] callback failed: {e}"); }
     }
 
     /// <summary>English shorthand ("lf healer pls") becomes plain English before translation.</summary>
@@ -200,7 +273,7 @@ public sealed class TranslationService : IAsyncDisposable
         var now = DateTimeOffset.UtcNow;
         var entries = _cache.Snapshot()
             .Where(e => e.Value.Outcome == TranslationOutcome.Translated && now - e.Value.CachedAt < CacheLifetime)
-            .Select(e => new CacheEntry(e.Key, e.Value.Text!, e.Value.SourceLanguage, e.Value.CachedAt))
+            .Select(e => new CacheEntry(e.Key, e.Value.Text!, e.Value.SourceLanguage, e.Value.CachedAt, e.Value.By))
             .ToList();
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, JsonSerializer.Serialize(entries, CacheJsonContext.Default.ListCacheEntry));
@@ -214,7 +287,7 @@ public sealed class TranslationService : IAsyncDisposable
             var entries = JsonSerializer.Deserialize(File.ReadAllText(path), CacheJsonContext.Default.ListCacheEntry) ?? [];
             var now = DateTimeOffset.UtcNow;
             foreach (var e in entries.Where(e => now - e.SavedAt < CacheLifetime).OrderBy(e => e.SavedAt))
-                _cache.Set(e.Key, new TranslationResult(TranslationOutcome.Translated, e.Text, e.Source) { CachedAt = e.SavedAt });
+                _cache.Set(e.Key, new TranslationResult(TranslationOutcome.Translated, e.Text, e.Source, By: e.By) { CachedAt = e.SavedAt });
         }
         catch (Exception e) when (e is JsonException or IOException) { }
     }
@@ -235,7 +308,7 @@ public sealed class TranslationService : IAsyncDisposable
         catch (IOException) { }
     }
 
-    internal sealed record CacheEntry(string Key, string Text, string? Source, DateTimeOffset SavedAt);
+    internal sealed record CacheEntry(string Key, string Text, string? Source, DateTimeOffset SavedAt, string? By = null);
 
     public async ValueTask DisposeAsync()
     {

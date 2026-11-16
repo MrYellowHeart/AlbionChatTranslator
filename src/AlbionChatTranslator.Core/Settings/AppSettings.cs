@@ -9,7 +9,8 @@ using System.Text.Json.Serialization;
 
 namespace AlbionChatTranslator.Core.Settings;
 
-public enum ProviderChoice { Google, DeepL }
+/// <summary>An optional official translation service the user has a key for.</summary>
+public enum KeyService { None, Microsoft, DeepL }
 
 public enum TranslateMode { Automatic, OnClick }
 
@@ -51,8 +52,29 @@ public sealed class AppSettings
     /// <summary>Keep translations between sessions (stores other players' messages on disk). Off by default.</summary>
     public bool KeepCacheOnDisk { get; set; }
 
-    /// <summary>Use DeepL for a line when Google is busy or unreachable (needs a DeepL key).</summary>
-    public bool DeepLAsBackup { get; set; } = true;
+    // ── Translators, tried in this order ─────────────────────────────────────
+
+    /// <summary>1. The user's own official service (optional).</summary>
+    public KeyService KeyService { get; set; } = KeyService.None;
+
+    /// <summary>2. Google's free endpoint (no setup).</summary>
+    public bool UseGoogle { get; set; } = true;
+
+    /// <summary>3. Offline models when the online services cannot answer (never stops).</summary>
+    public bool OfflineFallback { get; set; } = true;
+
+    /// <summary>Microsoft Translator key, DPAPI-encrypted.</summary>
+    public string? MicrosoftKeyProtected { get; set; }
+
+    /// <summary>Azure region of the Translator resource (e.g. "westeurope"); empty for global resources.</summary>
+    public string? MicrosoftRegion { get; set; }
+
+    [JsonIgnore]
+    public string? MicrosoftKey
+    {
+        get => SecretProtector.Unprotect(MicrosoftKeyProtected);
+        set => MicrosoftKeyProtected = string.IsNullOrWhiteSpace(value) ? null : SecretProtector.Protect(value.Trim());
+    }
 
     // ── Overlay ──────────────────────────────────────────────────────────────
 
@@ -64,7 +86,6 @@ public sealed class AppSettings
     public double OverlayWidth { get; set; } = 520;
     public double OverlayHeight { get; set; } = 220;
 
-    public ProviderChoice Provider { get; set; } = ProviderChoice.Google;
 
     /// <summary>DeepL key encrypted with Windows DPAPI for the current user. Never stored in plain text.</summary>
     public string? DeepLKeyProtected { get; set; }
@@ -106,9 +127,10 @@ public sealed class AppSettings
             if (node["Version"] is null)
                 return MigrateFromV1(node);
 
-            // The short-lived offline build stored Provider = "Offline"; that is Google now.
-            if (node["Provider"]?.GetValue<string>() is "Offline")
-                node["Provider"] = nameof(ProviderChoice.Google);
+            // Earlier 2.0 builds had "Provider" (Google/DeepL/Offline) and "DeepLAsBackup".
+            // Anyone who entered a DeepL key keeps using it, now as the first translator.
+            if (node["KeyService"] is null && node["DeepLKeyProtected"]?.GetValue<string>() is { Length: > 0 })
+                node["KeyService"] = nameof(KeyService.DeepL);
 
             return node.Deserialize(SettingsJsonContext.Default.AppSettings) ?? new AppSettings();
         }
@@ -163,7 +185,7 @@ public sealed class AppSettings
             }
         }
         // v1 users already chose DeepL and have a key: keep them on it.
-        s.Provider = s.DeepLKeyProtected is null ? ProviderChoice.Google : ProviderChoice.DeepL;
+        s.KeyService = s.DeepLKeyProtected is null ? KeyService.None : KeyService.DeepL;
         return s;
     }
 

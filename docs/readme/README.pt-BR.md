@@ -70,7 +70,7 @@ Funcionam com o Albion em foco. Se outro programa já usa algum, o app avisa; os
 | **Quando traduzir** | *Automaticamente* ou *só quando eu clicar em [translate]*. |
 | **Nunca enviar estes canais** | Por exemplo sussurros ou guilda, se quiser mantê-los privados. |
 | **Nunca traduzir estas palavras** | Nomes de guilda, de amigos, suas gírias. |
-| **Tradutor** | Google Tradutor (padrão, sem configuração) ou DeepL com sua chave gratuita, e *usar o DeepL quando o Google estiver ocupado*. |
+| **Tradutores** | Usados nesta ordem: **1.** sua própria chave do Microsoft Translator ou DeepL (opcional, mais confiável), **2.** Google Tradutor (sem configuração), **3.** o backup offline. Cada um pode ser ligado ou desligado. |
 | **Lembrar traduções por 7 dias** | Menos mensagens enviadas após reiniciar. Desligado por padrão. |
 
 ## Como funciona
@@ -102,7 +102,7 @@ O Windows só deixa programas lerem o tráfego de rede com permissão de adminis
 - Sem telemetria, sem análises, sem anúncios, sem registro do chat. Nada é gravado em disco, a menos que você ative *Lembrar traduções*.
 - Uma chave do DeepL, se você adicionar, fica criptografada com a sua conta do Windows.
 
-O Google Tradutor é usado pelo endereço gratuito que os próprios widgets do Google usam. Não precisa de chave, mas não é uma API oficial: o Google pode limitá-lo. O app espera sozinho, e o DeepL pode assumir.
+O Google Tradutor é usado pelo endereço gratuito que os próprios widgets do Google usam. Não precisa de chave, mas não é uma API oficial e o Google o limita bastante por conexão; um chat movimentado pode atingir o limite em minutos. Quando isso acontece, o app dá um tempo e o **backup offline** (um modelo que roda no seu PC e não envia nada; baixa cerca de 110 MB por idioma na primeira vez) ou sua própria chave assume, então a tradução não para. Para o serviço mais confiável, adicione uma chave gratuita do Microsoft Translator ou do DeepL.
 
 ## Código aberto: confira você mesmo
 
@@ -132,7 +132,7 @@ O app só **lê** o tráfego de rede, como outras ferramentas da comunidade do A
 - **"Administrator permission was declined".** Clique em Start de novo e escolha *Sim*. Se sua conta do Windows não for administradora, um administrador precisa aprovar.
 - **O Windows SmartScreen avisa sobre o instalador.** As versões ainda não são assinadas digitalmente. Confira o hash (acima), escolha *Mais informações → Executar assim mesmo*, ou compile você mesmo.
 - **Um atalho não funciona.** Outro programa já usa; o app avisa qual. Use os botões.
-- **"Translation paused".** O Google está limitando pedidos por um momento; o app tenta de novo sozinho. Uma chave do DeepL evita isso.
+- **"Google is limiting requests; translating offline".** O endereço gratuito do Google tem um limite baixo. O backup offline assume; na primeira vez para um idioma ele baixa o pacote, então as primeiras linhas podem aparecer sem tradução. Uma chave gratuita do Microsoft ou DeepL evita isso.
 
 ## Licença
 

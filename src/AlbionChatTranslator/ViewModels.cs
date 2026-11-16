@@ -50,12 +50,16 @@ public sealed class ChatEntry : Observable
 
     /// <summary>"(Spanish)" after a translated line, or a short status while waiting.</summary>
     public string Tag => _translated is not null && _sourceLanguage is not null
-        ? $" ({Languages.NameOf(_sourceLanguage)})"
+        ? $" ({Languages.NameOf(_sourceLanguage)}{(_by == "Offline" ? " · offline" : "")})"
         : _status;
+
+    /// <summary>Which translator produced the line, for the tooltip and the "offline" marker.</summary>
+    public string? By => _by;
+    private string? _by;
 
     public bool IsTranslated => _translated is not null;
     public string? SourceLanguage => _sourceLanguage;
-    public string? Tooltip => _translated is null ? null : "Original: " + Original;
+    public string? Tooltip => _translated is null ? null : $"Original: {Original}{(_by is null ? "" : $"\nTranslated by {_by}")}";
 
     /// <summary>In click-to-translate mode: nothing has been sent yet.</summary>
     public bool AwaitingClick { get; private set; }
@@ -80,9 +84,10 @@ public sealed class ChatEntry : Observable
         AwaitingClick = false;
         _sourceLanguage = result.SourceLanguage;
         _translated = result.Outcome == TranslationOutcome.Translated ? result.Text : null;
+        _by = result.By;
         _status = result.Outcome switch
         {
-            TranslationOutcome.Busy => " (translation paused)",
+            TranslationOutcome.Busy => " (not translated: translators busy)",
             TranslationOutcome.Failed => " (not translated)",
             _ => string.Empty,
         };

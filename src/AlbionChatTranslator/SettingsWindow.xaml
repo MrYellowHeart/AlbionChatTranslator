@@ -34,15 +34,39 @@
                     <CheckBox x:Name="CbNoOther" Content="Other channels" Margin="0,3,14,3"/>
                 </WrapPanel>
 
-                <TextBlock Text="TRANSLATOR" Style="{StaticResource SectionHeader}"/>
-                <RadioButton x:Name="RbGoogle" GroupName="Provider" Content="Google Translate (recommended): free, no account"/>
-                <TextBlock Style="{StaticResource Hint}" Margin="20,0,0,8"
-                           Text="Only the text of messages that are not in your languages is sent. Never names, channels, item links or anything about you."/>
-                <RadioButton x:Name="RbDeepL" GroupName="Provider" Content="DeepL: needs your own API key"/>
+                <TextBlock Text="TRANSLATORS (TRIED IN THIS ORDER)" Style="{StaticResource SectionHeader}"/>
+
+                <TextBlock Text="1. Your own key (optional, most reliable)" Foreground="#D0D0D0" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Style="{StaticResource Hint}" Text="An official service with a free monthly allowance. Recommended if you translate a lot."/>
+                <ComboBox x:Name="CboKeyService" Height="24" Margin="0,2,0,4" SelectionChanged="CboKeyService_SelectionChanged">
+                    <ComboBoxItem Content="None"/>
+                    <ComboBoxItem Content="Microsoft Translator (2,000,000 characters free)"/>
+                    <ComboBoxItem Content="DeepL (500,000 characters/month free)"/>
+                </ComboBox>
+                <StackPanel x:Name="KeyPanel">
+                    <TextBlock Style="{StaticResource Hint}" Text="Key:"/>
+                    <PasswordBox x:Name="TxtKey" Height="24"/>
+                    <StackPanel x:Name="RegionPanel">
+                        <TextBlock Style="{StaticResource Hint}" Text="Region (as shown in Azure, e.g. westeurope; leave empty for a global resource):"/>
+                        <TextBox x:Name="TxtRegion" Height="24"/>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0">
+                        <Hyperlink x:Name="LinkKeyHelp" RequestNavigate="Link_RequestNavigate" Foreground="{StaticResource Accent}">How to get a free key</Hyperlink>
+                        <Run Text=" · stored encrypted with your Windows account"/>
+                    </TextBlock>
+                </StackPanel>
+
+                <CheckBox x:Name="CbUseGoogle" Margin="0,10,0,0" Content="2. Google Translate (free, no setup)"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="20,0,0,4"
-                           Text="Often more natural for European languages. Free key: 500,000 characters/month. Stored encrypted with your Windows account."/>
-                <PasswordBox x:Name="TxtDeepLKey" Margin="20,0,0,4" Height="24"/>
-                <CheckBox x:Name="CbDeepLBackup" Margin="20,0,0,0" Content="Use DeepL when Google is busy or unreachable"/>
+                           Text="Several lines share one request and requests are paced; Google still limits busy use, so the next option takes over when it does."/>
+
+                <CheckBox x:Name="CbOffline" Content="3. Offline backup when the above are busy or unreachable"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="20,0,0,4"
+                           Text="Translates on your PC, so nothing is sent. Downloads about 110 MB once per language the first time it is needed, and uses about 200 MB more memory only while it is translating."/>
+                <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
+                    <TextBlock x:Name="TxtPacks" Foreground="#888" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <Button Content="Delete offline packs" Padding="6,1" FontSize="11" Click="BtnDeletePacks_Click"/>
+                </StackPanel>
 
                 <TextBlock Text="NEVER TRANSLATE THESE WORDS" Style="{StaticResource SectionHeader}"/>
                 <TextBlock Style="{StaticResource Hint}" Text="Guild names, friends' names, your own slang. Separate with commas. Albion cities, tiers and item links are already protected."/>

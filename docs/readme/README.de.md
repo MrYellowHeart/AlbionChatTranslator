@@ -70,7 +70,7 @@ Sie funktionieren, während Albion im Vordergrund ist. Ist eine Kombination scho
 | **Wann übersetzen** | *Automatisch* oder *nur wenn ich auf [translate] klicke*. |
 | **Diese Kanäle nie senden** | Zum Beispiel Flüstern oder Gilde, wenn sie privat bleiben sollen. |
 | **Diese Wörter nie übersetzen** | Gildennamen, Namen von Freunden, eigener Slang. |
-| **Übersetzer** | Google Übersetzer (Standard, ohne Einrichtung) oder DeepL mit deinem kostenlosen Schlüssel, und *DeepL nutzen, wenn Google ausgelastet ist*. |
+| **Übersetzer** | In dieser Reihenfolge: **1.** dein eigener Schlüssel für Microsoft Translator oder DeepL (optional, am zuverlässigsten), **2.** Google Übersetzer (ohne Einrichtung), **3.** die Offline-Reserve. Jeder lässt sich ein- oder ausschalten. |
 | **Übersetzungen 7 Tage merken** | Weniger Anfragen nach einem Neustart. Standardmäßig aus. |
 
 ## So funktioniert es
@@ -102,7 +102,7 @@ Windows erlaubt das Mitlesen von Netzwerkverkehr nur mit Administratorrechten. D
 - Keine Telemetrie, keine Analyse, keine Werbung, keine Chatprotokolle. Nichts wird gespeichert, außer du aktivierst *Übersetzungen merken*.
 - Ein DeepL-Schlüssel wird, falls du einen einträgst, mit deinem Windows-Konto verschlüsselt.
 
-Der Google Übersetzer wird über die kostenlose Adresse genutzt, die Googles eigene Widgets verwenden. Sie braucht keinen Schlüssel, ist aber keine offizielle API: Google könnte sie drosseln. Die App wartet dann selbst, und DeepL kann einspringen.
+Der Google Übersetzer wird über die kostenlose Adresse genutzt, die Googles eigene Widgets verwenden. Sie braucht keinen Schlüssel, ist aber keine offizielle API, und Google begrenzt sie pro Verbindung stark; ein belebter Chat kann das Limit in Minuten erreichen. Dann tritt die App zur Seite und die **Offline-Reserve** (ein Modell auf deinem PC, das nichts verschickt; lädt beim ersten Mal etwa 110 MB pro Sprache) oder dein eigener Schlüssel übernimmt, damit die Übersetzung nicht stoppt. Am zuverlässigsten ist ein kostenloser Schlüssel für Microsoft Translator oder DeepL.
 
 ## Open Source: Prüf es selbst
 
@@ -132,7 +132,7 @@ Die App **liest** nur Netzwerkverkehr, wie andere Albion-Community-Tools. Sie ve
 - **"Administrator permission was declined".** Klicke erneut auf Start und wähle *Ja*. Ist dein Windows-Konto kein Administrator, muss ein Administrator zustimmen.
 - **Windows SmartScreen warnt vor dem Installer.** Releases sind noch nicht signiert. Prüfe den Hash (oben), wähle *Weitere Informationen → Trotzdem ausführen* oder bau es selbst.
 - **Ein Tastenkürzel tut nichts.** Ein anderes Programm nutzt es; die App sagt welches. Nutze die Schaltflächen.
-- **"Translation paused".** Google drosselt kurz; die App versucht es selbst erneut. Ein DeepL-Schlüssel verhindert das.
+- **"Google is limiting requests; translating offline".** Googles kostenlose Adresse hat ein niedriges Limit. Die Offline-Reserve übernimmt; beim ersten Mal für eine Sprache lädt sie ihr Paket, daher bleiben die ersten Zeilen eventuell unübersetzt. Ein kostenloser Microsoft- oder DeepL-Schlüssel verhindert das.
 
 ## Lizenz
 

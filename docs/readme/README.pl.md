@@ -70,7 +70,7 @@ Działają, gdy Albion jest aktywny. Jeśli inny program już używa skrótu, ap
 | **Kiedy tłumaczyć** | *Automatycznie* albo *tylko gdy kliknę [translate]*. |
 | **Nigdy nie wysyłaj tych kanałów** | Np. szepty lub gildię, jeśli mają zostać prywatne. |
 | **Nigdy nie tłumacz tych słów** | Nazwy gildii, imiona znajomych, własny slang. |
-| **Tłumacz** | Google Tłumacz (domyślnie, bez konfiguracji) lub DeepL z Twoim darmowym kluczem, oraz *użyj DeepL, gdy Google jest zajęty*. |
+| **Tłumacze** | W tej kolejności: **1.** Twój własny klucz Microsoft Translator lub DeepL (opcjonalnie, najbardziej niezawodne), **2.** Google Tłumacz (bez konfiguracji), **3.** zapas offline. Każdy można włączyć lub wyłączyć. |
 | **Zapamiętuj tłumaczenia przez 7 dni** | Mniej wysyłek po ponownym uruchomieniu. Domyślnie wyłączone. |
 
 ## Jak to działa
@@ -102,7 +102,7 @@ Windows pozwala czytać ruch sieciowy tylko z uprawnieniami administratora. Apli
 - Bez telemetrii, analityki, reklam i logów czatu. Nic nie jest zapisywane na dysku, chyba że włączysz *Zapamiętuj tłumaczenia*.
 - Klucz DeepL, jeśli go dodasz, jest szyfrowany Twoim kontem Windows.
 
-Google Tłumacz działa przez darmowy adres, którego używają widżety samego Google. Nie wymaga klucza, ale nie jest oficjalnym API: Google może go ograniczyć. Aplikacja sama poczeka, a DeepL może przejąć.
+Google Tłumacz działa przez darmowy adres, którego używają widżety samego Google. Nie wymaga klucza, ale nie jest oficjalnym API i Google mocno go ogranicza dla każdego połączenia; ruchliwy czat może wyczerpać limit w kilka minut. Wtedy aplikacja ustępuje i zastępuje go **zapas offline** (model działający na Twoim komputerze, nic nie wysyła; przy pierwszym użyciu języka pobiera ok. 110 MB) albo Twój własny klucz, więc tłumaczenie się nie zatrzymuje. Najbardziej niezawodny jest darmowy klucz Microsoft Translator lub DeepL.
 
 ## Otwarte źródło: sprawdź sam
 
@@ -132,7 +132,7 @@ Aplikacja tylko **czyta** ruch sieciowy, jak inne narzędzia społeczności Albi
 - **"Administrator permission was declined".** Kliknij Start jeszcze raz i wybierz *Tak*. Jeśli Twoje konto Windows nie jest administratorem, musi to zatwierdzić administrator.
 - **Windows SmartScreen ostrzega przed instalatorem.** Wydania nie są jeszcze podpisane. Sprawdź skrót pliku (wyżej), wybierz *Więcej informacji → Uruchom mimo to* albo zbuduj sam.
 - **Skrót nic nie robi.** Używa go inny program; aplikacja powie który. Użyj przycisków.
-- **"Translation paused".** Google chwilowo ogranicza zapytania; aplikacja ponowi sama. Klucz DeepL temu zapobiega.
+- **"Google is limiting requests; translating offline".** Darmowy adres Google ma niski limit. Zastępuje go zapas offline; przy pierwszym użyciu języka pobiera paczkę, więc pierwsze linijki mogą pozostać nieprzetłumaczone. Darmowy klucz Microsoft lub DeepL temu zapobiega.
 
 ## Licencja
 

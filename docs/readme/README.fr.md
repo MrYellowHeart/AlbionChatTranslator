@@ -70,7 +70,7 @@ Ils fonctionnent quand Albion est au premier plan. Si un autre programme utilise
 | **Quand traduire** | *Automatiquement* ou *seulement quand je clique sur [translate]*. |
 | **Ne jamais envoyer ces canaux** | Par exemple les chuchotements ou la guilde, pour qu'ils restent privés. |
 | **Ne jamais traduire ces mots** | Noms de guilde, d'amis, votre propre argot. |
-| **Traducteur** | Google Traduction (par défaut, sans configuration) ou DeepL avec votre clé gratuite, et *utiliser DeepL quand Google est occupé*. |
+| **Traducteurs** | Dans cet ordre : **1.** votre propre clé Microsoft Translator ou DeepL (facultatif, le plus fiable), **2.** Google Traduction (sans configuration), **3.** la réserve hors ligne. Chacun peut être activé ou désactivé. |
 | **Mémoriser les traductions 7 jours** | Moins d'envois après un redémarrage. Désactivé par défaut. |
 
 ## Comment ça marche
@@ -102,7 +102,7 @@ Windows n'autorise la lecture du trafic réseau qu'avec les droits administrateu
 - Pas de télémétrie, pas de statistiques, pas de publicité, pas de journal du chat. Rien n'est écrit sur le disque sauf si vous activez *Mémoriser les traductions*.
 - Une clé DeepL, si vous en ajoutez une, est chiffrée avec votre compte Windows.
 
-Google Traduction est utilisé via l'adresse gratuite qu'utilisent les propres widgets de Google. Pas de clé nécessaire, mais ce n'est pas une API officielle : Google pourrait la limiter. L'application patiente toute seule, et DeepL peut prendre le relais.
+Google Traduction est utilisé via l'adresse gratuite qu'utilisent les propres widgets de Google. Pas de clé nécessaire, mais ce n'est pas une API officielle et Google la limite fortement par connexion ; un chat animé peut atteindre la limite en quelques minutes. Dans ce cas, l'application s'efface et la **réserve hors ligne** (un modèle qui tourne sur votre PC et n'envoie rien ; elle télécharge environ 110 Mo par langue la première fois) ou votre propre clé prend le relais, pour que la traduction ne s'arrête pas. Pour le service le plus fiable, ajoutez une clé gratuite Microsoft Translator ou DeepL.
 
 ## Open source : vérifiez par vous-même
 
@@ -132,7 +132,7 @@ L'application **lit** seulement le trafic réseau, comme d'autres outils de la c
 - **"Administrator permission was declined".** Cliquez à nouveau sur Start et choisissez *Oui*. Si votre compte Windows n'est pas administrateur, un administrateur doit valider.
 - **Windows SmartScreen avertit à propos de l'installateur.** Les versions ne sont pas encore signées. Vérifiez l'empreinte (ci-dessus), choisissez *Informations complémentaires → Exécuter quand même*, ou compilez-le vous-même.
 - **Un raccourci ne fait rien.** Un autre programme l'utilise ; l'application indique lequel. Utilisez les boutons.
-- **"Translation paused".** Google limite les requêtes un instant ; l'application réessaie seule. Une clé DeepL évite cela.
+- **"Google is limiting requests; translating offline".** L'adresse gratuite de Google a une limite basse. La réserve hors ligne prend le relais ; la première fois pour une langue, elle télécharge son paquet, donc les premières lignes peuvent rester non traduites. Une clé gratuite Microsoft ou DeepL évite cela.
 
 ## Licence
 

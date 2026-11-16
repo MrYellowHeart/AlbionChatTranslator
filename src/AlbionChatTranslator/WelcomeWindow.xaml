@@ -20,7 +20,7 @@
         <TextBlock Style="{StaticResource Hint}" Text="3.  Click the (Language) tag after a message to reply in that language."/>
 
         <TextBlock Text="Privacy" Foreground="#D0D0D0" FontSize="13" FontWeight="SemiBold" Margin="0,12,0,6"/>
-        <TextBlock Style="{StaticResource Hint}" Text="Messages in other languages are translated by Google Translate. Only the message text is sent: never player names, channels, item links or anything about you. Messages already in your language, short ones and repeats never leave your PC. You can switch to DeepL in Settings."/>
+        <TextBlock Style="{StaticResource Hint}" Text="Messages in other languages are translated by Google Translate, or by an offline model on your PC when Google is busy (it downloads about 110 MB per language the first time). Only the message text is ever sent: never player names, channels, item links or anything about you. Messages already in your language, short ones and repeats never leave your PC. For the most reliable service you can add your own free Microsoft or DeepL key in Settings."/>
 
         <Button Content="Let's go" IsDefault="True" HorizontalAlignment="Right" Width="110" Margin="0,16,0,0"
                 Style="{StaticResource PrimaryButton}" Click="BtnOk_Click"/>
