@@ -58,6 +58,10 @@ public sealed class ChatEventParser
         var builder = ReceiverBuilder.Create();
         foreach (var code in HandledEvents)
             builder.AddHandler(new DelegateEventHandler((int)code, Handle));
+        // Discovery for the diagnostic log: the layout of any other event that carries text,
+        // once per event type (text itself is never logged, only its length).
+        foreach (var code in Enum.GetValues<EventCodes>().Distinct().Except(HandledEvents))
+            builder.AddHandler(new DelegateEventHandler((int)code, LogOtherEvent));
         return builder.Build();
     }
 
@@ -67,8 +71,16 @@ public sealed class ChatEventParser
         switch ((EventCodes)packet.EventCode)
         {
             case EventCodes.ChatMessage: Emit(ParseChannelMessage(packet.Parameters)); break;
-            case EventCodes.ChatSay: Emit(ParseSay(packet.Parameters)); break;
-            case EventCodes.ChatWhisper: Emit(ParseWhisper(packet.Parameters)); break;
+            case EventCodes.ChatSay:
+                LogShapeOnce("ChatSay", "first ChatSay", packet.Parameters);
+                Emit(ParseSay(packet.Parameters));
+                break;
+            case EventCodes.ChatWhisper:
+                LogShapeOnce("ChatWhisper", "first ChatWhisper", packet.Parameters);
+                var whisper = ParseWhisper(packet.Parameters);
+                if (whisper is null) LogShapeOnce("ChatWhisper:unread", "ChatWhisper not understood", packet.Parameters);
+                Emit(whisper);
+                break;
             case EventCodes.NewChatChannels:
                 Diagnostic?.Invoke($"event NewChatChannels: {EventShape.Describe(packet.Parameters)}");
                 ParseChannelAnnouncement(packet.Parameters);
@@ -215,6 +227,17 @@ public sealed class ChatEventParser
         }
         Diagnostic?.Invoke($"room {room} -> channel {channel}");
         RoomJoined?.Invoke(room, channel);
+    }
+
+    private readonly bool[] _otherSeen = new bool[4096];
+
+    private void LogOtherEvent(EventPacket packet)
+    {
+        int code = packet.EventCode;
+        if (Diagnostic is null || code < 0 || code >= _otherSeen.Length || _otherSeen[code]) return;
+        if (!packet.Parameters.Values.Any(v => v is string { Length: > 0 } s && !s.StartsWith('@') || v is string[] { Length: > 0 })) return;
+        _otherSeen[code] = true;
+        Diagnostic.Invoke($"other event {(EventCodes)code}: {EventShape.Describe(packet.Parameters)}");
     }
 
     private void LogShapeOnce(string id, string label, IReadOnlyDictionary<byte, object> p, params byte[] hidden)
