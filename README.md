@@ -39,6 +39,8 @@ Just play. Translated messages appear in the app (and in the overlay, if it is o
 - **Hover** a message to see the original text.
 - **Click** the `(Portuguese)` tag to reply to that person in their language.
 - Messages in your language, very short messages ("gg", "ok") and item links are shown as they are.
+- Chat is sorted into the **same tabs as in the game**, including whispers, party, guild and alliance chat. Channels the game shows in none of your tabs are not shown here either.
+- **Whispers you send** appear as `To <name>: …`. If you sent them in another language, you see what they mean in yours; replies made with the reply box show the exact words you typed.
 
 ### Replying in their language
 
@@ -54,7 +56,7 @@ The app never types into the game or sends anything there. **You** always paste 
 Press **Ctrl+Shift+O** to show or hide a see-through chat feed on top of the game.
 While it is locked, mouse clicks go straight through it to Albion. Press **Ctrl+Shift+L** to unlock it, drag it where you want, resize it from the corner, then press **Ctrl+Shift+L** again to lock it.
 
-It has the **same tabs as your in-game chat**, in a small bar above it; click a tab to switch (this doesn't take focus from the game), and tabs with new messages show how many. The overlay hides while you're in another program and comes back when you return to Albion. Albion needs to run in windowed or borderless mode for overlays to show.
+Whispers always stay visible in it, both sides, even with *show only translated messages* on. It has the **same tabs as your in-game chat**, in a small bar above it; click a tab to switch (this doesn't take focus from the game), and tabs with new messages show how many. The overlay hides while you're in another program and comes back when you return to Albion. Albion needs to run in windowed or borderless mode for overlays to show.
 
 ### Hotkeys
 
