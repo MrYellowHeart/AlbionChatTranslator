@@ -87,13 +87,18 @@
                            Text="Hotkeys (work while Albion has focus): Ctrl+Shift+R reply · Ctrl+Shift+O show/hide overlay · Ctrl+Shift+L unlock overlay to move it."/>
 
                 <TextBlock Text="CHAT" Style="{StaticResource SectionHeader}"/>
-                <CheckBox x:Name="CbGlobal" Content="Include global channels (trade, recruitment, help…)"/>
+                <CheckBox x:Name="CbGlobal" Content="Translate global channels automatically (Help, Looking for group, Recruit, trade…)"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="20,0,0,4" Text="They are always shown in their tabs. When this is off, click [translate] on a message to translate it; this keeps busy global chat from using up the translators' limits."/>
                 <CheckBox x:Name="CbTopmost" Content="Keep this window on top of the game"/>
                 <CheckBox x:Name="CbOnTopOnlyWithGame" Margin="20,0,0,0" Content="Only while Albion (or this app) is in front: hide the overlay when I switch to other programs"/>
                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                     <TextBlock Text="Skip messages with fewer letters than" Foreground="#D0D0D0" FontSize="12" VerticalAlignment="Center"/>
                     <TextBox x:Name="TxtMinLetters" Width="36" Margin="8,0,0,0" HorizontalContentAlignment="Center"/>
                 </StackPanel>
+
+                <TextBlock Text="TROUBLESHOOTING" Style="{StaticResource SectionHeader}"/>
+                <CheckBox x:Name="CbDiagnostics" Content="Write a diagnostic log (channel numbers, routing, timings; never message text or names)"/>
+                <Button Content="Open log folder" HorizontalAlignment="Left" Padding="8,2" FontSize="11" Margin="20,2,0,0" Click="BtnOpenLogFolder_Click"/>
 
                 <TextBlock Text="TABS" Style="{StaticResource SectionHeader}"/>
                 <TextBlock x:Name="TxtNoTabs" Style="{StaticResource Hint}"

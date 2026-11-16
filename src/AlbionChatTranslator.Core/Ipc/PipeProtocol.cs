@@ -14,6 +14,8 @@ public sealed record PipeMessage
     public const string TypeTabs = "tabs";
     public const string TypeStatus = "status";
     public const string TypeHeartbeat = "hb";
+    /// <summary>Technical note for the optional diagnostic log (channel numbers, never message text).</summary>
+    public const string TypeDiagnostic = "diag";
 
     public required string Type { get; init; }
     public ChatLine? Line { get; init; }

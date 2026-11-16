@@ -52,17 +52,35 @@ public class ChatEventParserTests
     }
 
     [Fact]
-    public void Global_channels_use_byte_keys_and_unknown_ones_are_dropped()
+    public void Global_channels_use_the_byte_value_unless_the_game_announces_a_mapping()
+    {
+        // The game's tab layout lists global channels by the same number (e.g. Recruit = 2).
+        var (parser, lines, _) = Create();
+        parser.Handle(Packet(EventCodes.ChatMessage, new() { [0] = (byte)2, [1] = "Kim", [2] = "recruiting" }));
+        parser.Handle(Packet(EventCodes.ChatMessage, new() { [0] = (byte)5, [1] = "Kim", [2] = "need help" }));
+        parser.Handle(Packet(EventCodes.NewChatChannels, new() { [0] = 50, [1] = (byte)99 }));
+        parser.Handle(Packet(EventCodes.ChatMessage, new() { [0] = (byte)99, [1] = "Kim", [2] = "announced" }));
+
+        Assert.Equal([2, 5, 50], lines.Select(l => l.ChannelId));
+        Assert.All(lines, l => Assert.Equal(ChannelKind.Global, l.Kind));
+    }
+
+    [Fact]
+    public void Channel_mappings_and_unknown_channels_are_reported_without_message_text()
     {
         var (parser, lines, _) = Create();
-        parser.Handle(Packet(EventCodes.ChatMessage, new() { [0] = (byte)2, [1] = "Kim", [2] = "wts bag" }));
-        parser.Handle(Packet(EventCodes.ChatMessage, new() { [0] = (byte)99, [1] = "Kim", [2] = "unmapped" }));
-        parser.Handle(Packet(EventCodes.NewChatChannels, new() { [0] = 50, [1] = (byte)99 }));
-        parser.Handle(Packet(EventCodes.ChatMessage, new() { [0] = (byte)99, [1] = "Kim", [2] = "now mapped" }));
+        var notes = new List<string>();
+        parser.Diagnostic += notes.Add;
 
-        Assert.Equal(["wts bag", "now mapped"], lines.Select(l => l.Text));
-        Assert.All(lines, l => Assert.Equal(ChannelKind.Global, l.Kind));
-        Assert.Equal(50, lines[1].ChannelId);
+        parser.Handle(Packet(EventCodes.ChatMessage, new() { [0] = (short)2028, [1] = "Zed", [2] = "secret guild plan" }));
+        parser.Handle(Packet(EventCodes.ChatMessage, new() { [0] = (short)2028, [1] = "Zed", [2] = "again" }));
+        parser.Handle(Packet(EventCodes.NewChatChannels, new() { [0] = KnownChannels.Guild, [1] = (short)2028 }));
+
+        Assert.Equal(2, lines.Count); // unannounced channels are still delivered (the UI puts them in the first tab)
+        Assert.Equal(2, notes.Count); // one "unannounced" note (not repeated) + one mapping
+        Assert.Contains("2028", notes[0]);
+        Assert.Contains("2028 -> tab channel 24", notes[1]);
+        Assert.DoesNotContain(notes, n => n.Contains("secret") || n.Contains("Zed"));
     }
 
     [Fact]

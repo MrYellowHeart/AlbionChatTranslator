@@ -13,9 +13,11 @@ public sealed class ChatEventParser
     private const string TabNamePrefix = "@CHAT_SETTINGS_TAB_NAME_";
     private const int MaxTextLength = 1024;
 
-    // ChatMessage [0] Byte value -> chat-settings channel ID (global channels).
-    // Defaults observed by the original project; NewChatChannels refreshes them at login.
-    private readonly Dictionary<int, int> _globalChannels = new() { [2] = 8, [7] = 14 };
+    // ChatMessage [0] Byte value -> chat-settings channel ID (global channels). The game's tab
+    // layout lists global channels by that same number (e.g. Recruit = 2), so the byte value is
+    // used as-is unless NewChatChannels announces a different mapping.
+    private readonly Dictionary<int, int> _globalChannels = new();
+    private readonly HashSet<int> _reportedUnknown = [];
 
     // ChatMessage [0] runtime ID (guild/alliance/party/...) -> chat-settings channel ID.
     // Runtime IDs are reassigned every session, so this is never persisted.
@@ -27,6 +29,9 @@ public sealed class ChatEventParser
 
     public event Action<ChatLine>? LineReceived;
     public event Action<IReadOnlyList<ChatTab>>? TabsReceived;
+
+    /// <summary>Technical notes for the optional diagnostic log: channel numbers only, never text or names.</summary>
+    public event Action<string>? Diagnostic;
 
     public static readonly IReadOnlyList<EventCodes> HandledEvents =
     [
@@ -85,12 +90,21 @@ public sealed class ChatEventParser
         {
             if (channelObj is byte globalKey)
             {
-                if (!_globalChannels.TryGetValue(globalKey, out channelId)) return null;
+                channelId = _globalChannels.TryGetValue(globalKey, out int mappedGlobal) ? mappedGlobal : globalKey;
                 kind = ChannelKind.Global;
             }
             else if (ParamReader.TryToInt(channelObj, out int runtimeId))
             {
-                channelId = _dynamicChannels.TryGetValue(runtimeId, out int mapped) ? mapped : runtimeId;
+                if (_dynamicChannels.TryGetValue(runtimeId, out int mapped))
+                {
+                    channelId = mapped;
+                }
+                else
+                {
+                    channelId = runtimeId;
+                    if (_reportedUnknown.Add(runtimeId))
+                        Diagnostic?.Invoke($"chat on unannounced runtime channel {runtimeId} (log in or change character while capturing so the game announces it)");
+                }
                 kind = KnownChannels.KindOf(channelId);
             }
             else
@@ -128,9 +142,15 @@ public sealed class ChatEventParser
         lock (_lock)
         {
             if (key is byte globalKey)
+            {
                 _globalChannels[globalKey] = channelId;
+                Diagnostic?.Invoke($"global channel {globalKey} -> tab channel {channelId}");
+            }
             else if (ParamReader.TryToInt(key, out int runtimeId))
+            {
                 _dynamicChannels[runtimeId] = channelId;
+                Diagnostic?.Invoke($"runtime channel {runtimeId} -> tab channel {channelId}");
+            }
         }
     }
 

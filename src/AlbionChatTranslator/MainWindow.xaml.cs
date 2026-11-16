@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     private ReplyWindow? _reply;
     private string? _lastForeignLanguage;
     private int _messageCount;
+    private bool _unsortedHintShown;
     private int _sentCount;
 
 
@@ -109,6 +110,8 @@ public partial class MainWindow : Window
     private void ApplySettings()
     {
         UpdateTopmost();
+        DiagnosticLog.Enabled = _settings.DiagnosticLog;
+        DiagnosticLog.Write($"settings: target={_settings.TargetLanguage} read=[{string.Join(",", _settings.ReadLanguages)}] key={_settings.KeyService} google={_settings.UseGoogle} offline={_settings.OfflineFallback} globalAuto={_settings.IncludeGlobalChannels} mode={_settings.Mode} never=[{string.Join(",", _settings.NeverSendChannels)}] version={typeof(MainWindow).Assembly.GetName().Version}");
         _translation.TargetLanguage = _settings.TargetLanguage;
         _translation.MinLetters = _settings.MinLetters;
         _translation.ReadLanguages = _settings.ReadLanguages.ToHashSet();
@@ -162,13 +165,16 @@ public partial class MainWindow : Window
         var client = new CaptureClient();
         client.LineReceived += line => Dispatcher.InvokeAsync(() => OnChatLine(line));
         client.TabsReceived += tabs => Dispatcher.InvokeAsync(() => OnTabsFromGame(tabs));
+        client.Diagnostic += note => DiagnosticLog.Write($"capture: {note}");
         client.StatusChanged += (text, ok) => Dispatcher.InvokeAsync(() =>
         {
+            DiagnosticLog.Write($"capture status ok={ok}: {text}");
             if (ok) SetStatus(text, "#4EC94E");
             else { SetStatus("Stopped", "#777777"); TxtError.Text = text; }
         });
         client.Stopped += () => Dispatcher.InvokeAsync(() =>
         {
+            DiagnosticLog.Write("capture stopped");
             if (_capture != client) return;
             _capture = null;
             SetStatus("Stopped", "#777777");
@@ -203,6 +209,8 @@ public partial class MainWindow : Window
 
     private void OnTabsFromGame(IReadOnlyList<ChatTab> tabs)
     {
+        DiagnosticLog.Write("game tabs: " + string.Join("; ", tabs.Select(t => $"{t.Name}=[{string.Join(",", t.ChannelIds)}]")));
+        _unsortedHintShown = false;
         _settings.MergeTabs(tabs);
         _settings.Save();
         RebuildTabs();
@@ -210,33 +218,57 @@ public partial class MainWindow : Window
 
     private void OnChatLine(ChatLine line)
     {
-        if (line.Kind == ChannelKind.Global && !_settings.IncludeGlobalChannels) return;
-
         var targets = _settings.Tabs.Count == 0
             ? _tabs.Where(t => t.Name == FallbackTabName).ToList()
             : _settings.Tabs.Where(t => t.Enabled && t.ChannelIds.Contains(line.ChannelId))
                 .Select(t => _tabs.FirstOrDefault(vm => vm.Name.Equals(t.Name, StringComparison.OrdinalIgnoreCase)))
                 .OfType<ChatTabViewModel>().ToList();
-        if (targets.Count == 0) return;
+
+        bool unsorted = targets.Count == 0;
+        if (unsorted)
+        {
+            // A channel no tab lists (often guild/alliance chat when capture started after login):
+            // show it in the first tab rather than losing it.
+            if (_tabs.FirstOrDefault() is { } first) targets.Add(first);
+            else return;
+            if (!_unsortedHintShown)
+            {
+                _unsortedHintShown = true;
+                TxtActivity.Text = "Some chat isn't sorted into its tab yet (shown in the first tab). Change character or log in again while capturing to fix that.";
+            }
+        }
 
         var entry = new ChatEntry(line);
         foreach (var tab in targets) tab.Add(entry, _settings.MaxLinesPerTab);
         TxtCount.Text = (++_messageCount).ToString();
 
+        string action;
         if (_settings.NeverSendChannels.Contains(line.Kind))
+        {
             entry.MarkNotSent();
-        else if (_settings.Mode == TranslateMode.OnClick)
+            action = "not sent (channel excluded)";
+        }
+        else if (_settings.Mode == TranslateMode.OnClick || line.Kind == ChannelKind.Global && !_settings.IncludeGlobalChannels)
+        {
             entry.MarkClickToTranslate();
+            action = "click to translate";
+        }
         else
+        {
             Translate(entry);
+            action = "translating";
+        }
+        DiagnosticLog.Write($"line #{_messageCount} channel={line.ChannelId} kind={line.Kind} letters={line.Text.Count(char.IsLetter)} tabs=[{string.Join(", ", targets.Select(t => t.Name))}]{(unsorted ? " (unsorted)" : "")} -> {action}");
     }
 
     private void Translate(ChatEntry entry)
     {
         entry.MarkPending();
+        var started = DateTime.UtcNow;
         _translation.Submit(entry.Line.Text, result => Dispatcher.InvokeAsync(() =>
         {
             entry.Apply(result);
+            DiagnosticLog.Write($"  result channel={entry.Line.ChannelId} outcome={result.Outcome} by={result.By ?? "-"} source={result.SourceLanguage ?? "-"} after={(DateTime.UtcNow - started).TotalMilliseconds:0} ms{(result.Message is { } m ? $" note=\"{m}\"" : "")}");
             if (result.Outcome == TranslationOutcome.Translated)
             {
                 TxtActivity.Text = string.Empty;

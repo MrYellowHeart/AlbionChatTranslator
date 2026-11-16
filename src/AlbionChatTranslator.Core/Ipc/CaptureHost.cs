@@ -57,17 +57,19 @@ public static class CaptureHost
         // process is the Administrators group rather than the user, so it always refuses.)
         if (ServerProcessId(pipe) != parentPid) return CaptureExitCode.PipeNotOurs;
 
-        using var writer = new StreamWriter(pipe, new UTF8Encoding(false)) { AutoFlush = true, NewLine = "\n" };
+        // Raw writes (no StreamWriter): a writer flushes when disposed, and flushing into a pipe
+        // the window already closed threw "Pipe is broken" and crashed the helper on shutdown.
         var writeLock = new Lock();
         using var done = new ManualResetEventSlim();
 
         void Send(PipeMessage message)
         {
+            var bytes = Encoding.UTF8.GetBytes(PipeProtocol.Serialize(message) + "\n");
             lock (writeLock)
             {
-                try { writer.WriteLine(PipeProtocol.Serialize(message)); }
-                catch (IOException) { done.Set(); } // UI went away
-                catch (ObjectDisposedException) { done.Set(); }
+                if (done.IsSet) return;
+                try { pipe.Write(bytes); }
+                catch (Exception e) when (e is IOException or ObjectDisposedException or InvalidOperationException) { done.Set(); } // UI went away
             }
         }
 
@@ -76,6 +78,7 @@ public static class CaptureHost
             var parser = new ChatEventParser();
             parser.LineReceived += line => Send(new PipeMessage { Type = PipeMessage.TypeLine, Line = line });
             parser.TabsReceived += tabs => Send(new PipeMessage { Type = PipeMessage.TypeTabs, Tabs = [.. tabs] });
+            parser.Diagnostic += note => Send(new PipeMessage { Type = PipeMessage.TypeDiagnostic, Status = note });
 
             using var capture = new RawSocketCapture(parser.BuildReceiver());
             int interfaces = capture.Start();

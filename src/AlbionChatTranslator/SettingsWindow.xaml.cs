@@ -59,6 +59,7 @@ public partial class SettingsWindow : Window
         SliderOpacity.Value = settings.OverlayOpacity;
         CbOverlayTranslatedOnly.IsChecked = settings.OverlayTranslatedOnly;
         CbGlobal.IsChecked = settings.IncludeGlobalChannels;
+        CbDiagnostics.IsChecked = settings.DiagnosticLog;
         CbTopmost.IsChecked = settings.AlwaysOnTop;
         CbOnTopOnlyWithGame.IsChecked = settings.OnTopOnlyWithGame;
         TxtMinLetters.Text = settings.MinLetters.ToString();
@@ -128,6 +129,12 @@ public partial class SettingsWindow : Window
         ShowPackSize();
     }
 
+    private void BtnOpenLogFolder_Click(object sender, RoutedEventArgs e)
+    {
+        System.IO.Directory.CreateDirectory(AppSettings.DefaultDirectory);
+        Process.Start(new ProcessStartInfo("explorer.exe", $"\"{AppSettings.DefaultDirectory}\"") { UseShellExecute = true });
+    }
+
     private void BtnClearCache_Click(object sender, RoutedEventArgs e)
     {
         _clearCache();
@@ -166,6 +173,7 @@ public partial class SettingsWindow : Window
         _settings.OverlayOpacity = SliderOpacity.Value;
         _settings.OverlayTranslatedOnly = CbOverlayTranslatedOnly.IsChecked == true;
         _settings.IncludeGlobalChannels = CbGlobal.IsChecked == true;
+        _settings.DiagnosticLog = CbDiagnostics.IsChecked == true;
         _settings.AlwaysOnTop = CbTopmost.IsChecked == true;
         _settings.OnTopOnlyWithGame = CbOnTopOnlyWithGame.IsChecked == true;
         if (int.TryParse(TxtMinLetters.Text, out int min)) _settings.MinLetters = Math.Clamp(min, 1, 50);

@@ -29,7 +29,11 @@ public sealed class AppSettings
     /// <summary>Language chat is translated into (ISO 639-1).</summary>
     public string TargetLanguage { get; set; } = Languages.English;
 
+    /// <summary>Translate global channels (Help, LFG, Recruit, trade…) automatically. They are always shown.</summary>
     public bool IncludeGlobalChannels { get; set; }
+
+    /// <summary>Write the troubleshooting log (no message text or names).</summary>
+    public bool DiagnosticLog { get; set; }
     public int MinLetters { get; set; } = 4;
     public bool AlwaysOnTop { get; set; } = true;
 
