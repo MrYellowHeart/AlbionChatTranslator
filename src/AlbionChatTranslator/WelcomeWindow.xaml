@@ -9,7 +9,7 @@
     <StackPanel Margin="24">
         <TextBlock Text="Albion Chat Translator" Foreground="{StaticResource Accent}" FontSize="18" FontWeight="Bold"/>
         <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,16"
-                   Text="Translates Albion Online chat on your own PC. Free, no account, and your chat never leaves your computer."/>
+                   Text="Translates Albion Online chat as it happens. Free, no account, no setup."/>
 
         <TextBlock Text="Which language do you read?" Foreground="#D0D0D0" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
         <ComboBox x:Name="CboLanguage" DisplayMemberPath="Name" Height="26" Margin="0,0,0,16"/>
@@ -17,8 +17,10 @@
         <TextBlock Text="How it works" Foreground="#D0D0D0" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
         <TextBlock Style="{StaticResource Hint}" Text="1.  Click ▶ Start and approve the Windows prompt. Reading game traffic needs administrator rights; only a small hidden helper gets them."/>
         <TextBlock Style="{StaticResource Hint}" Text="2.  Log in to Albion. Your chat tabs show up here by themselves."/>
-        <TextBlock Style="{StaticResource Hint}" Text="3.  The first time a new language appears in chat, its language pack (about 110 MB) downloads in the background. After that it works offline."/>
-        <TextBlock Style="{StaticResource Hint}" Text="4.  Click the (Language) tag after a message to reply in that language."/>
+        <TextBlock Style="{StaticResource Hint}" Text="3.  Click the (Language) tag after a message to reply in that language."/>
+
+        <TextBlock Text="Privacy" Foreground="#D0D0D0" FontSize="13" FontWeight="SemiBold" Margin="0,12,0,6"/>
+        <TextBlock Style="{StaticResource Hint}" Text="Messages in other languages are translated by Google Translate. Only the message text is sent: never player names, channels, item links or anything about you. Messages already in your language, short ones and repeats never leave your PC. You can switch to DeepL in Settings."/>
 
         <Button Content="Let's go" IsDefault="True" HorizontalAlignment="Right" Width="110" Margin="0,16,0,0"
                 Style="{StaticResource PrimaryButton}" Click="BtnOk_Click"/>

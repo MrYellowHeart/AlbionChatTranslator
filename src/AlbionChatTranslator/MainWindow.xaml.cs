@@ -17,36 +17,24 @@ public partial class MainWindow : Window
     private const string FallbackTabName = "All chat";
 
     private readonly AppSettings _settings;
-    private readonly ModelCatalog _catalog;
-    private readonly ModelStore _store;
-    private readonly OfflineProvider _offline;
+    private readonly GoogleProvider _google = new();
     private readonly TranslationService _translation;
     private readonly Updater _updater = new();
     private readonly ObservableCollection<ChatTabViewModel> _tabs = [];
     private ITranslationProvider? _deepL;
     private CaptureClient? _capture;
     private int _messageCount;
-    private int _lastProgressPercent = -1;
+    private int _sentCount;
 
     public MainWindow()
     {
         InitializeComponent();
 
         _settings = AppSettings.Load();
-        _catalog = ModelCatalog.LoadEmbedded();
-        _store = new ModelStore(ModelStore.DefaultRoot);
-        _offline = new OfflineProvider(_catalog, _store);
         var detector = new ChatLanguageDetector();
-        _translation = new TranslationService(detector, _offline);
+        _translation = new TranslationService(detector, _google);
         _ = Task.Run(detector.WarmUp); // so the first chat line is not slow
-
-        _store.Progress += OnDownloadProgress;
-        _offline.DownloadFinished += (pack, error) => Dispatcher.InvokeAsync(() =>
-        {
-            _lastProgressPercent = -1;
-            TxtActivity.Text = error is null ? $"Language pack {pack} ready" : string.Empty;
-            if (error is not null) TxtError.Text = $"Language pack {pack} failed: {error}";
-        });
+        _translation.Sent += () => Dispatcher.InvokeAsync(() => TxtSent.Text = (++_sentCount).ToString());
 
         Tabs.ItemsSource = _tabs;
         ApplySettings();
@@ -55,7 +43,7 @@ public partial class MainWindow : Window
         {
             if (_settings.IsFirstRun)
             {
-                new WelcomeWindow(_settings, _catalog) { Owner = this }.ShowDialog();
+                new WelcomeWindow(_settings) { Owner = this }.ShowDialog();
                 _settings.Save();
                 ApplySettings();
             }
@@ -69,7 +57,7 @@ public partial class MainWindow : Window
         Closed += async (_, _) =>
         {
             await _translation.DisposeAsync();
-            _offline.Dispose();
+            _google.Dispose();
             _deepL?.Dispose();
         };
     }
@@ -81,7 +69,6 @@ public partial class MainWindow : Window
         Topmost = _settings.AlwaysOnTop;
         _translation.TargetLanguage = _settings.TargetLanguage;
         _translation.MinLetters = _settings.MinLetters;
-        _offline.AutoDownload = _settings.AutoDownloadLanguagePacks;
 
         _deepL?.Dispose();
         _deepL = null;
@@ -93,8 +80,8 @@ public partial class MainWindow : Window
         }
         else
         {
-            _translation.Provider = _offline;
-            TxtProvider.Text = $"Offline → {Languages.NameOf(_settings.TargetLanguage)} · nothing leaves your PC";
+            _translation.Provider = _google;
+            TxtProvider.Text = $"Google → {Languages.NameOf(_settings.TargetLanguage)}";
         }
 
         RebuildTabs();
@@ -186,7 +173,14 @@ public partial class MainWindow : Window
         foreach (var tab in targets) tab.Add(entry, _settings.MaxLinesPerTab);
         TxtCount.Text = (++_messageCount).ToString();
 
-        _translation.Submit(line.Text, result => Dispatcher.InvokeAsync(() => entry.Apply(result)));
+        _translation.Submit(line.Text, result => Dispatcher.InvokeAsync(() =>
+        {
+            entry.Apply(result);
+            if (result.Outcome is TranslationOutcome.Busy or TranslationOutcome.Failed && result.Message is { } msg)
+                TxtActivity.Text = msg;
+            else if (result.Outcome == TranslationOutcome.Translated)
+                TxtActivity.Text = string.Empty;
+        }));
     }
 
     // ── Chat list behaviour ──────────────────────────────────────────────────
@@ -220,7 +214,7 @@ public partial class MainWindow : Window
     private void BtnReply_Click(object sender, RoutedEventArgs e) => OpenReply(null);
 
     private void OpenReply(string? toLanguage) =>
-        new ReplyWindow(_translation, _catalog, _settings.TargetLanguage, toLanguage) { Owner = this, Topmost = Topmost }.Show();
+        new ReplyWindow(_translation, _settings.TargetLanguage, toLanguage) { Owner = this, Topmost = Topmost }.Show();
 
     // ── Toolbar ──────────────────────────────────────────────────────────────
 
@@ -234,7 +228,7 @@ public partial class MainWindow : Window
 
     private void BtnSettings_Click(object sender, RoutedEventArgs e)
     {
-        var window = new SettingsWindow(_settings, _catalog, _store) { Owner = this };
+        var window = new SettingsWindow(_settings) { Owner = this };
         if (window.ShowDialog() == true)
         {
             _settings.Save();
@@ -245,15 +239,7 @@ public partial class MainWindow : Window
     private void BtnHelp_Click(object sender, RoutedEventArgs e) =>
         new HelpWindow { Owner = this }.ShowDialog();
 
-    // ── Downloads & updates ──────────────────────────────────────────────────
-
-    private void OnDownloadProgress(string pack, long done, long total)
-    {
-        int percent = total == 0 ? 100 : (int)(done * 100 / total);
-        if (percent == _lastProgressPercent) return;
-        _lastProgressPercent = percent;
-        Dispatcher.InvokeAsync(() => TxtActivity.Text = $"Downloading language pack {pack}: {percent}% of {total / 1_000_000} MB");
-    }
+    // ── Updates ──────────────────────────────────────────────────────────────
 
     private async Task CheckForUpdatesAsync()
     {

@@ -8,11 +8,11 @@ public partial class WelcomeWindow : Window
 {
     private readonly AppSettings _settings;
 
-    public WelcomeWindow(AppSettings settings, ModelCatalog catalog)
+    public WelcomeWindow(AppSettings settings)
     {
         InitializeComponent();
         _settings = settings;
-        var targets = catalog.TargetLanguages.ToList();
+        var targets = Languages.All.ToList();
         CboLanguage.ItemsSource = targets;
         CboLanguage.SelectedItem = targets.FirstOrDefault(l => l.Code == settings.TargetLanguage) ?? targets.First(l => l.Code == Languages.English);
     }

@@ -7,8 +7,6 @@
 
   <ItemGroup>
     <PackageReference Include="DeepL.net" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
-    <PackageReference Include="Microsoft.ML.Tokenizers" />
     <PackageReference Include="SearchPioneer.Lingua" GeneratePathProperty="true" ExcludeAssets="contentFiles" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
   </ItemGroup>
@@ -16,10 +14,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\external\StatisticsAnalysis\StatisticsAnalysisTool.Abstractions\StatisticsAnalysisTool.Abstractions.csproj" />
     <ProjectReference Include="..\..\external\StatisticsAnalysis\StatisticsAnalysisTool.Network\StatisticsAnalysisTool.Network.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Translation\model-catalog.json" LogicalName="model-catalog.json" />
   </ItemGroup>
 
   <!--

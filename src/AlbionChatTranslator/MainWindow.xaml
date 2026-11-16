@@ -112,6 +112,9 @@
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Messages: " Foreground="#555" FontSize="10"/>
                 <TextBlock x:Name="TxtCount" Text="0" Foreground="{StaticResource Accent}" FontSize="10" Margin="0,0,12,0"/>
+                <TextBlock Text="Sent for translation: " Foreground="#555" FontSize="10"
+                           ToolTip="Lines that left your PC. Lines in your own language, short lines and repeats are never sent."/>
+                <TextBlock x:Name="TxtSent" Text="0" Foreground="{StaticResource Accent}" FontSize="10" Margin="0,0,12,0"/>
                 <TextBlock x:Name="TxtActivity" Foreground="#888" FontSize="10" Margin="0,0,12,0"/>
                 <TextBlock x:Name="TxtError" Foreground="{StaticResource Error}" FontSize="10"/>
             </StackPanel>

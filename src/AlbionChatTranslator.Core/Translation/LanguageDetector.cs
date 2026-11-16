@@ -85,7 +85,7 @@ public sealed partial class ChatLanguageDetector
 
     /// <summary>
     /// Best guess first, followed by languages that scored almost as well (close calls such as
-    /// Spanish vs Portuguese), so callers can prefer one whose language pack is already installed.
+    /// Spanish vs Portuguese).
     /// Empty when unsure. If the reader's own language is a close call, it is the only result.
     /// </summary>
     public IReadOnlyList<string> DetectCandidates(string text, string? readerLanguage = null)

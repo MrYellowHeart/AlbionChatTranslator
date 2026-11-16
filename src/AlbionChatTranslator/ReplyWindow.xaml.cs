@@ -8,21 +8,16 @@ public partial class ReplyWindow : Window
 {
     private readonly TranslationService _translation;
 
-    public ReplyWindow(TranslationService translation, ModelCatalog catalog, string myLanguage, string? theirLanguage)
+    public ReplyWindow(TranslationService translation, string myLanguage, string? theirLanguage)
     {
         InitializeComponent();
         _translation = translation;
 
-        // Only languages we can actually translate into (English pivot included).
-        var targets = Languages.All.Where(l => catalog.Route(myLanguage, l.Code) is not null && l.Code != myLanguage).ToList();
-        if (_translation.Provider is DeepLProvider) targets = Languages.All.Where(l => l.Code != myLanguage).ToList();
+        var targets = Languages.All.Where(l => l.Code != myLanguage).ToList();
         CboTarget.ItemsSource = targets;
         CboTarget.SelectedItem = targets.FirstOrDefault(l => l.Code == theirLanguage)
                                  ?? targets.FirstOrDefault(l => l.Code == Languages.English)
                                  ?? targets.FirstOrDefault();
-
-        if (theirLanguage is not null && targets.All(l => l.Code != theirLanguage))
-            TxtInfo.Text = $"There is no offline model for writing in {Languages.NameOf(theirLanguage)} yet. Pick another language or use DeepL in Settings.";
 
         TxtInput.KeyDown += (_, e) =>
         {
@@ -42,7 +37,7 @@ public partial class ReplyWindow : Window
 
         BtnTranslate.IsEnabled = false;
         TxtOutput.Text = string.Empty;
-        TxtInfo.Text = "Translating… (the first time for a language also downloads its pack)";
+        TxtInfo.Text = "Translating…";
         try
         {
             var result = await _translation.TranslateReplyAsync(text, target.Code);

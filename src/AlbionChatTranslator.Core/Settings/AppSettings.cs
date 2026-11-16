@@ -9,7 +9,7 @@ using System.Text.Json.Serialization;
 
 namespace AlbionChatTranslator.Core.Settings;
 
-public enum ProviderChoice { Offline, DeepL }
+public enum ProviderChoice { Google, DeepL }
 
 public sealed class TabSetting
 {
@@ -28,12 +28,11 @@ public sealed class AppSettings
 
     public bool IncludeGlobalChannels { get; set; }
     public int MinLetters { get; set; } = 4;
-    public bool AutoDownloadLanguagePacks { get; set; } = true;
     public bool AlwaysOnTop { get; set; } = true;
     public int MaxLinesPerTab { get; set; } = 500;
     public List<TabSetting> Tabs { get; set; } = [];
 
-    public ProviderChoice Provider { get; set; } = ProviderChoice.Offline;
+    public ProviderChoice Provider { get; set; } = ProviderChoice.Google;
 
     /// <summary>DeepL key encrypted with Windows DPAPI for the current user. Never stored in plain text.</summary>
     public string? DeepLKeyProtected { get; set; }
@@ -65,7 +64,11 @@ public sealed class AppSettings
             if (node["Version"] is null)
                 return MigrateFromV1(node);
 
-            return JsonSerializer.Deserialize(json, SettingsJsonContext.Default.AppSettings) ?? new AppSettings();
+            // The short-lived offline build stored Provider = "Offline"; that is Google now.
+            if (node["Provider"]?.GetValue<string>() is "Offline")
+                node["Provider"] = nameof(ProviderChoice.Google);
+
+            return node.Deserialize(SettingsJsonContext.Default.AppSettings) ?? new AppSettings();
         }
         catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
         {
@@ -117,8 +120,8 @@ public sealed class AppSettings
                 });
             }
         }
-        // Keep using the existing key only if the user had one; offline remains the default otherwise.
-        s.Provider = ProviderChoice.Offline;
+        // v1 users already chose DeepL and have a key: keep them on it.
+        s.Provider = s.DeepLKeyProtected is null ? ProviderChoice.Google : ProviderChoice.DeepL;
         return s;
     }
 

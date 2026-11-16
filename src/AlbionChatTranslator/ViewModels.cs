@@ -63,9 +63,8 @@ public sealed class ChatEntry : Observable
         _translated = result.Outcome == TranslationOutcome.Translated ? result.Text : null;
         _status = result.Outcome switch
         {
-            TranslationOutcome.Downloading => " (downloading language pack…)",
-            TranslationOutcome.Unsupported when result.SourceLanguage is not null => $" ({Languages.NameOf(result.SourceLanguage)}, no model)",
-            TranslationOutcome.Failed => " (translation failed)",
+            TranslationOutcome.Busy => " (translation paused)",
+            TranslationOutcome.Failed => " (not translated)",
             _ => string.Empty,
         };
         Raise(nameof(Text));

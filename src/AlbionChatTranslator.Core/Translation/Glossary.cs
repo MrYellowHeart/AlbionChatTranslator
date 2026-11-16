@@ -49,7 +49,7 @@ public static partial class Glossary
     [GeneratedRegex(@"(?<![\p{L}\p{N}])(?:[Tt][1-8](?:\.[0-4])?|[1-8]\.[0-4]|@[1-4])(?![\p{L}\p{N}])")]
     private static partial Regex TierRegex();
 
-    // Placeholder format: a bracketed number OPUS-MT models copy through verbatim.
+    // Placeholder format: a bracketed number translators copy through verbatim.
     [GeneratedRegex(@"\[\s*(\d{1,2})\s*\]")]
     private static partial Regex PlaceholderRegex();
 

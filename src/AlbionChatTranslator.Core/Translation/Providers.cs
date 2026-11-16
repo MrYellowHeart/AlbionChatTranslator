@@ -1,149 +1,151 @@
-using System.Collections.Concurrent;
+using System.Net;
+using System.Text.Json;
 
 namespace AlbionChatTranslator.Core.Translation;
 
-public enum ProviderOutcome { Translated, Unsupported, Downloading, Failed }
+public enum ProviderOutcome { Translated, Busy, Failed }
 
-public sealed record ProviderResult(ProviderOutcome Outcome, string? Text = null, string? Message = null);
+/// <param name="SourceLanguage">Language the provider detected (ISO 639-1), when it reports one.</param>
+public sealed record ProviderResult(ProviderOutcome Outcome, string? Text = null, string? SourceLanguage = null, string? Message = null);
 
-/// <summary>Something that turns text in one language into another.</summary>
+/// <summary>Something that turns text into another language.</summary>
 public interface ITranslationProvider : IDisposable
 {
     string Name { get; }
-    bool CanTranslate(string source, string target);
 
-    /// <summary>True if it can translate right now without downloading anything.</summary>
-    bool IsReady(string source, string target);
-    Task<ProviderResult> TranslateAsync(string text, string source, string target, bool waitForDownloads, CancellationToken ct);
+    /// <param name="source">ISO 639-1 code, or null to let the provider detect it.</param>
+    Task<ProviderResult> TranslateAsync(string text, string? source, string target, CancellationToken ct);
 }
 
 /// <summary>
-/// The default: OPUS-MT models on the user's own CPU. No account, no key, and chat text
-/// never leaves the PC. Missing language packs download once, in the background.
+/// Google Translate through the same keyless endpoint Google's own web widgets use.
+/// Best quality and every language, with nothing to install or sign up for.
+///
+/// Privacy: only the message text is sent, in an HTTPS POST body (never in the URL), with
+/// no cookies, no account, no sender name, channel or game data. Item links and Albion
+/// terms are already replaced by placeholders before they get here.
 /// </summary>
-public sealed class OfflineProvider : ITranslationProvider
+public sealed class GoogleProvider : ITranslationProvider
 {
-    private const int MaxLoadedModels = 2; // ~150 MB each; enough for one pivot (X->en->Y)
+    private static readonly Uri Endpoint = new("https://translate.googleapis.com/translate_a/single");
+    private static readonly TimeSpan MinBackoff = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan MaxBackoff = TimeSpan.FromMinutes(10);
 
-    private readonly ModelCatalog _catalog;
-    private readonly ModelStore _store;
-    private readonly Lock _modelsLock = new();
-    private readonly LinkedList<(string Id, MarianModel Model)> _loaded = new();
-    private readonly ConcurrentDictionary<string, Lazy<Task>> _downloads = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HttpClient _http;
+    private readonly TimeProvider _clock;
+    private readonly Lock _lock = new();
+    private DateTimeOffset _pausedUntil = DateTimeOffset.MinValue;
+    private TimeSpan _backoff = MinBackoff;
 
-    public OfflineProvider(ModelCatalog catalog, ModelStore store)
+    public GoogleProvider(HttpClient? http = null, TimeProvider? clock = null)
     {
-        _catalog = catalog;
-        _store = store;
+        _http = http ?? CreateClient();
+        _clock = clock ?? TimeProvider.System;
     }
 
-    public string Name => "Offline";
-    public bool AutoDownload { get; set; } = true;
+    public string Name => "Google";
 
-    /// <summary>(pack id, null on success or an error message).</summary>
-    public event Action<string, string?>? DownloadFinished;
-    public event Action<string>? DownloadStarted;
-
-    public bool CanTranslate(string source, string target) => _catalog.Route(source, target) is not null;
-
-    public bool IsReady(string source, string target) =>
-        _catalog.Route(source, target) is { } route && route.All(s => _store.IsInstalled(s.Pack));
-
-    public async Task<ProviderResult> TranslateAsync(string text, string source, string target, bool waitForDownloads, CancellationToken ct)
+    public async Task<ProviderResult> TranslateAsync(string text, string? source, string target, CancellationToken ct)
     {
-        var route = _catalog.Route(source, target);
-        if (route is null)
-            return new ProviderResult(ProviderOutcome.Unsupported, Message: $"No offline model for {Languages.NameOf(source)} → {Languages.NameOf(target)}");
-
-        var missing = route.Where(s => !_store.IsInstalled(s.Pack)).Select(s => s.Pack).ToList();
-        if (missing.Count > 0)
+        lock (_lock)
         {
-            // Incoming chat downloads only when allowed; an explicit reply always may.
-            if (!AutoDownload && !waitForDownloads)
-                return new ProviderResult(ProviderOutcome.Unsupported, Message: $"{Languages.NameOf(source)} language pack not installed");
-
-            var downloads = missing.Select(StartDownload).ToList();
-            if (!waitForDownloads)
-                return new ProviderResult(ProviderOutcome.Downloading, Message: "Downloading language pack…");
-
-            try { await Task.WhenAll(downloads).WaitAsync(ct).ConfigureAwait(false); }
-            catch (Exception e) when (e is not OperationCanceledException)
-            {
-                return new ProviderResult(ProviderOutcome.Failed, Message: $"Language pack download failed: {e.Message}");
-            }
+            var wait = _pausedUntil - _clock.GetUtcNow();
+            if (wait > TimeSpan.Zero)
+                return new ProviderResult(ProviderOutcome.Busy, Message: $"Google asked us to slow down; retrying in {Math.Ceiling(wait.TotalSeconds)} s");
         }
 
-        return await Task.Run(() =>
+        var query = $"client=gtx&dt=t&dj=1&sl={GoogleCode(source)}&tl={GoogleCode(target)}";
+        using var request = new HttpRequestMessage(HttpMethod.Post, new UriBuilder(Endpoint) { Query = query }.Uri)
         {
-            string current = text;
-            foreach (var step in route)
-            {
-                ct.ThrowIfCancellationRequested();
-                current = GetModel(step.Pack).Translate(current, step.TargetPrefix);
-            }
-            return new ProviderResult(ProviderOutcome.Translated, current);
-        }, ct).ConfigureAwait(false);
-    }
+            Content = new FormUrlEncodedContent([new KeyValuePair<string, string>("q", text)]),
+        };
 
-    private Task StartDownload(ModelPack pack) =>
-        _downloads.GetOrAdd(pack.Id, _ => new Lazy<Task>(() => RunDownloadAsync(pack))).Value;
-
-    private async Task RunDownloadAsync(ModelPack pack)
-    {
-        await Task.Yield(); // make sure the dictionary entry exists before we can remove it
-        DownloadStarted?.Invoke(pack.Id);
+        HttpResponseMessage response;
         try
         {
-            await _store.EnsureInstalledAsync(pack).ConfigureAwait(false);
-            DownloadFinished?.Invoke(pack.Id, null);
+            response = await _http.SendAsync(request, ct).ConfigureAwait(false);
         }
-        catch (Exception e)
+        catch (HttpRequestException e)
         {
-            DownloadFinished?.Invoke(pack.Id, e.Message);
-            throw;
+            return new ProviderResult(ProviderOutcome.Failed, Message: $"No connection to Google Translate ({e.Message})");
         }
-        finally
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
         {
-            _downloads.TryRemove(pack.Id, out _);
+            return new ProviderResult(ProviderOutcome.Failed, Message: "Google Translate timed out");
         }
-    }
 
-    private MarianModel GetModel(ModelPack pack)
-    {
-        lock (_modelsLock)
+        using (response)
         {
-            for (var node = _loaded.First; node is not null; node = node.Next)
+            if (response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable or HttpStatusCode.Forbidden)
             {
-                if (node.Value.Id != pack.Id) continue;
-                _loaded.Remove(node);
-                _loaded.AddFirst(node);
-                return node.Value.Model;
+                var pause = Pause(response.Headers.RetryAfter?.Delta);
+                return new ProviderResult(ProviderOutcome.Busy, Message: $"Google asked us to slow down; retrying in {Math.Ceiling(pause.TotalSeconds)} s");
             }
+            if (!response.IsSuccessStatusCode)
+                return new ProviderResult(ProviderOutcome.Failed, Message: $"Google Translate error {(int)response.StatusCode}");
 
-            var model = new MarianModel(_store.PackDirectory(pack));
-            _loaded.AddFirst((pack.Id, model));
-            while (_loaded.Count > MaxLoadedModels)
-            {
-                // Translate() holds the model's own lock, so disposal waits for in-flight work.
-                var evicted = _loaded.Last!.Value.Model;
-                _loaded.RemoveLast();
-                evicted.Dispose();
-            }
-            return model;
+            await using var body = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+            var parsed = Parse(await JsonDocument.ParseAsync(body, cancellationToken: ct).ConfigureAwait(false));
+            lock (_lock) _backoff = MinBackoff;
+            return parsed;
         }
     }
 
-    public void Dispose()
+    internal static ProviderResult Parse(JsonDocument doc)
     {
-        lock (_modelsLock)
+        using (doc)
         {
-            foreach (var (_, model) in _loaded) model.Dispose();
-            _loaded.Clear();
+            var root = doc.RootElement;
+            var text = string.Concat(root.TryGetProperty("sentences", out var sentences)
+                ? sentences.EnumerateArray()
+                    .Where(s => s.TryGetProperty("trans", out _))
+                    .Select(s => s.GetProperty("trans").GetString())
+                : []);
+            string? src = root.TryGetProperty("src", out var s) ? Languages.Normalize(s.GetString() ?? "") : null;
+            return text.Length == 0
+                ? new ProviderResult(ProviderOutcome.Failed, Message: "Google returned no translation")
+                : new ProviderResult(ProviderOutcome.Translated, text, src);
         }
     }
+
+    private TimeSpan Pause(TimeSpan? retryAfter)
+    {
+        lock (_lock)
+        {
+            var pause = retryAfter is { } r && r > _backoff ? r : _backoff;
+            if (pause > MaxBackoff) pause = MaxBackoff;
+            _pausedUntil = _clock.GetUtcNow() + pause;
+            _backoff = TimeSpan.FromTicks(Math.Min(_backoff.Ticks * 2, MaxBackoff.Ticks));
+            return pause;
+        }
+    }
+
+    /// <summary>Our ISO 639-1 codes to Google's; null means "detect".</summary>
+    internal static string GoogleCode(string? code) => code is null ? "auto" : Languages.Normalize(code) switch
+    {
+        "zh" => "zh-CN",
+        "he" => "iw",
+        var c => c,
+    };
+
+    private static HttpClient CreateClient()
+    {
+        var handler = new SocketsHttpHandler
+        {
+            UseCookies = false,          // nothing that could link requests to a person
+            AllowAutoRedirect = false,   // only ever talk to translate.googleapis.com
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+        };
+        var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
+        // A generic browser string: no app name, version or anything else that identifies the user.
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+        return client;
+    }
+
+    public void Dispose() => _http.Dispose();
 }
 
-/// <summary>Optional: DeepL with the user's own API key. Sends chat text to DeepL.</summary>
+/// <summary>Optional: DeepL with the user's own API key.</summary>
 public sealed class DeepLProvider : ITranslationProvider
 {
     private readonly DeepL.Translator _client;
@@ -152,17 +154,17 @@ public sealed class DeepLProvider : ITranslationProvider
 
     public string Name => "DeepL";
 
-    public bool CanTranslate(string source, string target) => true;
-
-    public bool IsReady(string source, string target) => true;
-
-    public async Task<ProviderResult> TranslateAsync(string text, string source, string target, bool waitForDownloads, CancellationToken ct)
+    public async Task<ProviderResult> TranslateAsync(string text, string? source, string target, CancellationToken ct)
     {
         try
         {
-            var result = await _client.TranslateTextAsync(text, Languages.Normalize(source).ToUpperInvariant(), DeepLTarget(target),
-                new DeepL.TextTranslateOptions { PreserveFormatting = true }, ct).ConfigureAwait(false);
-            return new ProviderResult(ProviderOutcome.Translated, result.Text);
+            var result = await _client.TranslateTextAsync(text, source is null ? null : Languages.Normalize(source).ToUpperInvariant(),
+                DeepLTarget(target), new DeepL.TextTranslateOptions { PreserveFormatting = true }, ct).ConfigureAwait(false);
+            return new ProviderResult(ProviderOutcome.Translated, result.Text, Languages.Normalize(result.DetectedSourceLanguageCode));
+        }
+        catch (DeepL.QuotaExceededException)
+        {
+            return new ProviderResult(ProviderOutcome.Failed, Message: "DeepL monthly quota used up");
         }
         catch (DeepL.DeepLException e)
         {
