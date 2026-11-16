@@ -289,10 +289,11 @@ public partial class MainWindow : Window
         TxtCount.Text = (++_messageCount).ToString();
 
         string action;
-        if (line.Outgoing)
+        if (line.Outgoing && ReplyMemory.Shared.TryRecall(line.Text, out var typed, out var sentIn))
         {
-            entry.MarkNotSent(); // your own words: shown as typed, never translated or sent
-            action = "own whisper (not translated)";
+            // A reply the reply box translated: show the exact words you typed, no translator needed.
+            entry.Apply(new TranslationResult(TranslationOutcome.Translated, typed, sentIn, By: "you (reply box)"));
+            action = "own whisper (showing what was typed in the reply box)";
         }
         else if (_settings.NeverSendChannels.Contains(line.Kind))
         {

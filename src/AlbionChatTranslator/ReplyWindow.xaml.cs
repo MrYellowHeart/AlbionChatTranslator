@@ -83,6 +83,8 @@ public partial class ReplyWindow : Window
                 case TranslationOutcome.Translated:
                 case TranslationOutcome.SameLanguage:
                     TxtOutput.Text = result.Text ?? text;
+                    if (result.Outcome == TranslationOutcome.Translated && result.Text is { } translated)
+                        ReplyMemory.Shared.Remember(translated, text, target.Code);
                     Copy();
                     TxtInfo.Text = result.Outcome == TranslationOutcome.SameLanguage
                         ? $"That already looks like {target.Name}. Copied as is."

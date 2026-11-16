@@ -1,4 +1,5 @@
 using AlbionChatTranslator.Core.Chat;
+using AlbionChatTranslator.Core.Translation;
 using AlbionChatTranslator.Core.Ipc;
 using AlbionChatTranslator.Core.Settings;
 using StatisticsAnalysisTool.Network;
@@ -187,5 +188,22 @@ public class OutgoingWhisperTests
         parser.HandleRequest(new RequestPacket(193, new Dictionary<byte, object> { [0] = "Somebody", [1] = "hello there", [2] = 5, [253] = (short)193 }));
         parser.HandleRequest(new RequestPacket(193, new Dictionary<byte, object> { [0] = 7, [1] = "hello there", [253] = (short)193 }));
         Assert.Empty(lines);
+    }
+}
+
+public class ReplyMemoryTests
+{
+    [Fact]
+    public void A_sent_reply_recalls_what_was_typed()
+    {
+        var memory = new ReplyMemory(capacity: 2);
+        memory.Remember("가방 팔아요?", "do you sell bags?", "ko");
+        Assert.True(memory.TryRecall("  가방   팔아요? ", out var typed, out var language));
+        Assert.Equal(("do you sell bags?", "ko"), (typed, language));
+        Assert.False(memory.TryRecall("something else", out _, out _));
+
+        memory.Remember("b", "two", "es");
+        memory.Remember("c", "three", "es");
+        Assert.False(memory.TryRecall("가방 팔아요?", out _, out _)); // only the last few are kept
     }
 }
