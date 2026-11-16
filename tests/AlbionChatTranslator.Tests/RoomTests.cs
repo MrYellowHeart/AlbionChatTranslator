@@ -156,3 +156,36 @@ public class WhisperTests
         Assert.Equal((KnownChannels.Whisper, ChannelKind.Whisper, "Somebody", "oi, voce vende a bolsa?"), (line.ChannelId, line.Kind, line.Sender, line.Text));
     }
 }
+
+public class OutgoingWhisperTests
+{
+    private static (ChatEventParser, List<ChatLine>) Create()
+    {
+        var parser = new ChatEventParser();
+        var lines = new List<ChatLine>();
+        parser.LineReceived += lines.Add;
+        return (parser, lines);
+    }
+
+    [Fact]
+    public void Own_whispers_are_shown_as_sent_to_the_recipient()
+    {
+        var (parser, lines) = Create();
+        // As logged: request 193: [0]=text(8) [1]=text(21) [253]=short 193 [255]=int 36
+        parser.HandleRequest(new RequestPacket(193, new Dictionary<byte, object> { [0] = "Somebody", [1] = "hello there my friend", [253] = (short)193, [255] = 36 }));
+
+        var line = Assert.Single(lines);
+        Assert.True(line.Outgoing);
+        Assert.Equal((KnownChannels.Whisper, ChannelKind.Whisper, "Somebody", "hello there my friend"), (line.ChannelId, line.Kind, line.Sender, line.Text));
+    }
+
+    [Fact]
+    public void Other_requests_and_other_layouts_are_not_chat()
+    {
+        var (parser, lines) = Create();
+        parser.HandleRequest(new RequestPacket(194, new Dictionary<byte, object> { [0] = "Somebody", [1] = "hello there", [253] = (short)194 }));
+        parser.HandleRequest(new RequestPacket(193, new Dictionary<byte, object> { [0] = "Somebody", [1] = "hello there", [2] = 5, [253] = (short)193 }));
+        parser.HandleRequest(new RequestPacket(193, new Dictionary<byte, object> { [0] = 7, [1] = "hello there", [253] = (short)193 }));
+        Assert.Empty(lines);
+    }
+}

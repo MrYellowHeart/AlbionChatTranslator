@@ -289,7 +289,12 @@ public partial class MainWindow : Window
         TxtCount.Text = (++_messageCount).ToString();
 
         string action;
-        if (_settings.NeverSendChannels.Contains(line.Kind))
+        if (line.Outgoing)
+        {
+            entry.MarkNotSent(); // your own words: shown as typed, never translated or sent
+            action = "own whisper (not translated)";
+        }
+        else if (_settings.NeverSendChannels.Contains(line.Kind))
         {
             entry.MarkNotSent();
             action = "not sent (channel excluded)";

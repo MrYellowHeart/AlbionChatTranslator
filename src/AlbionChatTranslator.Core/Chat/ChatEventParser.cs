@@ -66,7 +66,7 @@ public sealed class ChatEventParser
         // that is how the player's own whispers travel.
         for (int code = 0; code < MaxOperationCode; code++)
         {
-            builder.AddHandler(new DelegateRequestHandler(code, r => LogOperation("request", r.OperationCode, r.Parameters, _requestSeen)));
+            builder.AddHandler(new DelegateRequestHandler(code, HandleRequest));
             builder.AddHandler(new DelegateResponseHandler(code, r => LogOperation("response", r.OperationCode, r.Parameters, _responseSeen)));
         }
         return builder.Build();
@@ -239,6 +239,33 @@ public sealed class ChatEventParser
     }
 
     private const int MaxOperationCode = 1024;
+
+    /// <summary>
+    /// The request the game client sends for a whisper: [0] recipient, [1] text (seen in game,
+    /// Nov 2026). Upstream's code list has no operation names, so this number is ours to keep
+    /// current; the layout check below keeps a renumbered operation from being misread.
+    /// </summary>
+    public const int WhisperRequestCode = 193;
+
+    /// <summary>Processes one request sent by the game client. Public so tests can feed synthetic packets.</summary>
+    public void HandleRequest(RequestPacket packet)
+    {
+        if (packet.OperationCode == WhisperRequestCode && ParseOutgoingWhisper(packet.Parameters) is { } line)
+        {
+            Emit(line);
+            return;
+        }
+        LogOperation("request", packet.OperationCode, packet.Parameters, _requestSeen);
+    }
+
+    private ChatLine? ParseOutgoingWhisper(Dictionary<byte, object> p)
+    {
+        // Exactly two parameters besides Photon's own (253 operation code, 255): a name and a text.
+        if (p.Keys.Count(k => k < 250) != 2) return null;
+        if (!ParamReader.TryGetString(p, 0, out var recipient) || recipient.Length is 0 or > 32 || recipient.Contains(' ')) return null;
+        if (!ParamReader.TryGetString(p, 1, out var text) || !IsUsableText(text)) return null;
+        return new ChatLine(_clock.GetLocalNow(), KnownChannels.Whisper, ChannelKind.Whisper, recipient, Truncate(text), Outgoing: true);
+    }
     private readonly bool[] _otherSeen = new bool[4096];
     private readonly bool[] _requestSeen = new bool[MaxOperationCode];
     private readonly bool[] _responseSeen = new bool[MaxOperationCode];

@@ -42,7 +42,10 @@ public sealed class ChatEntry : Observable
 
     public ChatLine Line { get; }
     public string Time => Line.Timestamp.ToString("HH:mm");
-    public string Sender => Line.Sender + ": ";
+    public string Sender => (Line.Outgoing ? "To " : string.Empty) + Line.Sender + ": ";
+
+    /// <summary>Whispers are a conversation: the overlay keeps both sides even when it shows translated lines only.</summary>
+    public bool IsWhisper => Line.Kind == ChannelKind.Whisper;
     public string Original { get; }
     public Brush Brush { get; }
 

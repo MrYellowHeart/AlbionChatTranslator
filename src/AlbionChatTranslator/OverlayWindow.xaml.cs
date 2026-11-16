@@ -138,7 +138,7 @@ public partial class OverlayWindow : Window
     private void ApplyFilter()
     {
         if (_view is not null)
-            _view.Filter = _settings.OverlayTranslatedOnly ? o => o is ChatEntry { IsTranslated: true } : null;
+            _view.Filter = _settings.OverlayTranslatedOnly ? o => o is ChatEntry { IsTranslated: true } or ChatEntry { IsWhisper: true } : null;
     }
 
     private void OnTabsChanged(object? sender, NotifyCollectionChangedEventArgs e)
