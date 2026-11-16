@@ -37,9 +37,10 @@ public sealed class RawSocketCapture : IDisposable
 
         foreach (var ip in LocalIPv4Addresses())
         {
-            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP);
+            Socket? socket = null;
             try
             {
+                socket = new Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP);
                 socket.Bind(new IPEndPoint(ip, 0));
                 socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
                 socket.IOControl(IOControlCode.ReceiveAll, BitConverter.GetBytes(1), new byte[4]);
@@ -48,7 +49,7 @@ public sealed class RawSocketCapture : IDisposable
             catch (SocketException)
             {
                 // Typically "access denied" when not elevated, or an adapter that does not support RCVALL.
-                socket.Dispose();
+                socket?.Dispose();
             }
         }
 

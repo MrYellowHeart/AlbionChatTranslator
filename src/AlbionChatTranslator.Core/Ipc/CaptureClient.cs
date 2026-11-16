@@ -25,6 +25,9 @@ public sealed class CaptureClient : IAsyncDisposable
 
     public bool IsRunning => _readLoop is { IsCompleted: false };
 
+    /// <summary>Start the helper with a UAC prompt (normal use). Tests turn this off.</summary>
+    public bool Elevate { get; init; } = true;
+
     /// <summary>Starts the helper. Returns false (and raises StatusChanged) if it could not start.</summary>
     public async Task<bool> StartAsync(string helperExePath)
     {
@@ -40,7 +43,7 @@ public sealed class CaptureClient : IAsyncDisposable
             {
                 ArgumentList = { CaptureHost.Argument, pipeName, Environment.ProcessId.ToString() },
                 UseShellExecute = true,
-                Verb = "runas",
+                Verb = Elevate ? "runas" : "",
                 WindowStyle = ProcessWindowStyle.Hidden,
             });
         }
@@ -58,24 +61,35 @@ public sealed class CaptureClient : IAsyncDisposable
         }
 
         _cts = new CancellationTokenSource();
-        try
+        var connected = server.WaitForConnectionAsync(_cts.Token);
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        // Wait for the helper to connect, but report at once if it exits instead.
+        while (!connected.IsCompleted)
         {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
-            timeout.CancelAfter(TimeSpan.FromSeconds(20));
-            await server.WaitForConnectionAsync(timeout.Token);
+            if (_helper is { HasExited: true } || DateTime.UtcNow > deadline)
+            {
+                string reason = _helper is { HasExited: true } exited
+                    ? CaptureExitCode.Describe(SafeExitCode(exited))
+                    : "the capture helper did not respond";
+                await _cts.CancelAsync();
+                try { await connected; } catch (OperationCanceledException) { }
+                await server.DisposeAsync();
+                StatusChanged?.Invoke($"Could not start capture: {reason}.", false);
+                KillHelper();
+                return false;
+            }
+            await Task.WhenAny(connected, Task.Delay(250));
         }
-        catch (OperationCanceledException)
-        {
-            await server.DisposeAsync();
-            StatusChanged?.Invoke(_helper is { HasExited: true }
-                ? "Capture helper exited early. If you approved admin with a different Windows account, sign in with an admin account instead."
-                : "Capture helper did not respond.", false);
-            KillHelper();
-            return false;
-        }
+        await connected; // surface any connection error
 
         _readLoop = Task.Run(() => ReadLoopAsync(server, _cts.Token));
         return true;
+    }
+
+    private static int SafeExitCode(Process p)
+    {
+        try { return p.ExitCode; }
+        catch (Exception e) when (e is InvalidOperationException or Win32Exception) { return -1; }
     }
 
     private async Task ReadLoopAsync(NamedPipeServerStream server, CancellationToken ct)
@@ -108,6 +122,9 @@ public sealed class CaptureClient : IAsyncDisposable
             }
             catch (Exception e) when (e is OperationCanceledException or IOException) { }
         }
+        try { _helper?.WaitForExit(1500); } catch (Exception e) when (e is InvalidOperationException or Win32Exception) { }
+        if (!ct.IsCancellationRequested && _helper is { HasExited: true } helper && SafeExitCode(helper) is int code and not CaptureExitCode.Ok)
+            StatusChanged?.Invoke($"Capture stopped: {CaptureExitCode.Describe(code)}.", false);
         Stopped?.Invoke();
     }
 
