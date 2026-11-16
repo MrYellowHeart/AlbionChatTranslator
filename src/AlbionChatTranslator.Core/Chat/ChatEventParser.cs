@@ -62,6 +62,13 @@ public sealed class ChatEventParser
         // once per event type (text itself is never logged, only its length).
         foreach (var code in Enum.GetValues<EventCodes>().Distinct().Except(HandledEvents))
             builder.AddHandler(new DelegateEventHandler((int)code, LogOtherEvent));
+        // Same discovery for what the game client sends (requests) and the direct answers to them:
+        // that is how the player's own whispers travel.
+        for (int code = 0; code < MaxOperationCode; code++)
+        {
+            builder.AddHandler(new DelegateRequestHandler(code, r => LogOperation("request", r.OperationCode, r.Parameters, _requestSeen)));
+            builder.AddHandler(new DelegateResponseHandler(code, r => LogOperation("response", r.OperationCode, r.Parameters, _responseSeen)));
+        }
         return builder.Build();
     }
 
@@ -231,7 +238,20 @@ public sealed class ChatEventParser
         RoomJoined?.Invoke(room, channel);
     }
 
+    private const int MaxOperationCode = 1024;
     private readonly bool[] _otherSeen = new bool[4096];
+    private readonly bool[] _requestSeen = new bool[MaxOperationCode];
+    private readonly bool[] _responseSeen = new bool[MaxOperationCode];
+
+    private static bool CarriesText(Dictionary<byte, object> p) =>
+        p.Values.Any(v => v is string { Length: > 0 } s && !s.StartsWith('@') || v is string[] { Length: > 0 });
+
+    private void LogOperation(string kind, int code, Dictionary<byte, object> p, bool[] seen)
+    {
+        if (Diagnostic is null || code < 0 || code >= seen.Length || seen[code] || !CarriesText(p)) return;
+        seen[code] = true;
+        Diagnostic.Invoke($"{kind} {code}: {EventShape.Describe(p)}");
+    }
 
     private void LogOtherEvent(EventPacket packet)
     {
@@ -282,6 +302,26 @@ public sealed class ChatEventParser
     private static bool IsUsableText(string text) => !string.IsNullOrWhiteSpace(text);
 
     private static string Truncate(string text) => text.Length <= MaxTextLength ? text : text[..MaxTextLength];
+
+    private sealed class DelegateRequestHandler(int code, Action<RequestPacket> action) : PacketHandler<RequestPacket>(code)
+    {
+        protected override Task OnHandleAsync(RequestPacket packet)
+        {
+            try { action(packet); }
+            catch (Exception e) { System.Diagnostics.Debug.WriteLine($"[ChatEventParser] request {Code} failed: {e.Message}"); }
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class DelegateResponseHandler(int code, Action<ResponsePacket> action) : PacketHandler<ResponsePacket>(code)
+    {
+        protected override Task OnHandleAsync(ResponsePacket packet)
+        {
+            try { action(packet); }
+            catch (Exception e) { System.Diagnostics.Debug.WriteLine($"[ChatEventParser] response {Code} failed: {e.Message}"); }
+            return Task.CompletedTask;
+        }
+    }
 
     private sealed class DelegateEventHandler(int code, Action<EventPacket> action) : PacketHandler<EventPacket>(code)
     {
