@@ -95,7 +95,8 @@
             <Button x:Name="BtnStart" Content="▶ Start" Click="BtnStart_Click" Margin="0,0,4,0" Style="{StaticResource PrimaryButton}"/>
             <Button x:Name="BtnStop" Content="■ Stop" Click="BtnStop_Click" Margin="0,0,8,0" IsEnabled="False"/>
             <Button Content="Reply…" Click="BtnReply_Click" Margin="0,0,4,0" ToolTip="Write in your language, get it translated and copied (Ctrl+Shift+R from anywhere)"/>
-            <Button Content="Overlay" Click="BtnOverlay_Click" Margin="0,0,4,0" ToolTip="See-through chat on top of the game (Ctrl+Shift+O). Ctrl+Shift+L unlocks it to move."/>
+            <Button x:Name="BtnOverlay" Content="Overlay" Click="BtnOverlay_Click" Margin="0,0,4,0" Visibility="Collapsed"
+                    ToolTip="See-through chat on top of the game, at your own risk (Ctrl+Shift+O). Ctrl+Shift+L unlocks it to move."/>
             <Button Content="Clear" Click="BtnClear_Click" Margin="0,0,4,0"/>
             <Button Content="⚙ Settings" Click="BtnSettings_Click" Margin="0,0,4,0"/>
             <Button Content="?" Click="BtnHelp_Click" Margin="0,0,8,0" ToolTip="Help"/>

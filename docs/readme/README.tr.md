@@ -49,6 +49,8 @@ Uygulama oyuna asla bir şey yazmaz veya göndermez. Yapıştıran ve gönderen 
 
 ### Katman
 
+> **Varsayılan olarak kapalı, kullanım riski size aittir.** Albion Online desteği, üçüncü taraf araçların oyun istemcisinin üzerinde katman (overlay) gösteremeyeceğini söyledi. Bu katman oyunu değiştirmeyen ayrı bir penceredir, ancak destek bunun sayılıp sayılmadığını söylemedi. **Settings → Overlay** bölümünden açabilirsiniz.
+
 **Ctrl+Shift+O** oyunun üstündeki şeffaf sohbeti gösterir veya gizler. Kilitliyken tıklamalar doğrudan Albion'a geçer. **Ctrl+Shift+L** taşımak ve boyutlandırmak için kilidi açar; kilitlemek için tekrar bas.
 
 ### Kısayollar
@@ -125,6 +127,8 @@ Bir sorun mu buldun? [Bir issue aç](https://github.com/MrYellowHeart/AlbionChat
 ## Hesabım için güvenli mi?
 
 Uygulama, diğer Albion topluluk araçları gibi ağ trafiğini sadece **okur**. Oyunu değiştirmez, belleğini okumaz, kod enjekte etmez, girişleri otomatikleştirmez ve oyun sunucularına hiçbir şey göndermez. Sandbox Interactive tarafından yapılmamış, onaylanmamış veya desteklenmemektedir; hiçbir üçüncü taraf araç, bir oyun şirketinin onu nasıl değerlendireceğini garanti edemez. **Kullanım riski sana aittir.**
+
+Albion Online desteğinin bize söyledikleri (Kasım 2026): üçüncü taraf araçlar oyun istemcisini değiştiremez, görüş alanınız dışındaki oyuncuları izleyemez ve oyun istemcisinin üzerinde katman gösteremez; tüm araçlar kendi riskinizle kullanılır ve BattlEye bir müdahale algılarsa sizi oyundan atabilir. Bu uygulama yalnızca sohbeti okur ve katmanı varsayılan olarak kapalıdır.
 
 ## Sık karşılaşılan sorunlar
 

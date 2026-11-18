@@ -16,7 +16,7 @@ public sealed class GlobalHotkeys : IDisposable
     private readonly IntPtr _hwnd;
     private readonly HwndSource _source;
     private readonly Dictionary<int, Action> _actions = [];
-    private int _nextId = 0xA100;
+    private static int _nextId = 0xA100; // shared: several instances may register on one window
 
     public GlobalHotkeys(Window window)
     {

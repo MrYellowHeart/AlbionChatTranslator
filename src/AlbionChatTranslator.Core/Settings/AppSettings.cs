@@ -103,6 +103,17 @@ public sealed class AppSettings
 
     // ── Overlay ──────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Off by default: Albion Online support has said third-party tools may not have an overlay on
+    /// the game client, and would not say whether a separate window like this one counts.
+    /// </summary>
+    public bool OverlayEnabled { get; set; }
+
+    public const string OverlayWarning =
+        "Albion Online support has said third-party tools may not have an overlay on the game client. " +
+        "This overlay is a separate window that does not change the game, but Sandbox Interactive would not say " +
+        "whether it counts. If you turn it on, you do so at your own risk.";
+
     public double OverlayOpacity { get; set; } = 0.75;
     public bool OverlayTranslatedOnly { get; set; } = true;
     public bool OverlayClickThrough { get; set; } = true;
@@ -135,9 +146,16 @@ public sealed class AppSettings
     public static string DefaultDirectory => DataDirOverride ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AlbionChatTranslator");
 
+    /// <summary>
+    /// Machine-local data: offline packs and the optional translation cache. Deliberately NOT
+    /// %LOCALAPPDATA%\AlbionChatTranslator, which is the installer's own folder: running Setup
+    /// replaced it and the packs (hundreds of MB) were downloaded again after every install.
+    /// </summary>
+    public static string LocalDataDirectory => DataDirOverride ?? Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AlbionChatTranslatorData");
+
     /// <summary>Where the optional translation cache lives (machine-local, not roaming).</summary>
-    public static string CachePath => Path.Combine(DataDirOverride ?? Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AlbionChatTranslator"), "translation-cache.json");
+    public static string CachePath => Path.Combine(LocalDataDirectory, "translation-cache.json");
 
     public static AppSettings Load(string? directory = null)
     {

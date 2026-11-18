@@ -49,6 +49,8 @@ O app nunca digita nem envia nada no jogo. **Você** sempre cola e envia.
 
 ### Sobreposição
 
+> **Desligada por padrão, use por sua conta e risco.** O suporte do Albion Online disse que ferramentas de terceiros não podem ter sobreposição no cliente do jogo. Esta sobreposição é uma janela separada que não altera o jogo, mas o suporte não disse se ela conta. Ative em **Settings → Overlay**.
+
 **Ctrl+Shift+O** mostra ou esconde um chat transparente por cima do jogo. Enquanto está travada, os cliques passam direto para o Albion. **Ctrl+Shift+L** destrava para arrastar e redimensionar; aperte de novo para travar.
 
 ### Atalhos
@@ -125,6 +127,8 @@ Achou um problema? [Abra uma issue](https://github.com/MrYellowHeart/AlbionChatT
 ## É seguro para a minha conta?
 
 O app só **lê** o tráfego de rede, como outras ferramentas da comunidade do Albion. Não altera o jogo, não lê a memória dele, não injeta código, não automatiza comandos e não envia nada aos servidores do jogo. Não é feito, aprovado nem suportado pela Sandbox Interactive, e nenhuma ferramenta de terceiros pode garantir como uma empresa de jogos vai avaliá-la. **Use por sua conta e risco.**
+
+O que o suporte do Albion Online nos disse (novembro de 2026): ferramentas de terceiros não podem modificar o cliente do jogo, rastrear jogadores fora da sua visão nem ter sobreposição no cliente do jogo; todas são usadas por sua conta e risco, e o BattlEye pode te desconectar se detectar interferência. Este app só lê o chat, e a sobreposição vem desligada.
 
 ## Problemas comuns
 

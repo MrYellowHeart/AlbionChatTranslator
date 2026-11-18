@@ -49,6 +49,8 @@ L'application ne tape et n'envoie jamais rien dans le jeu. C'est toujours **vous
 
 ### Surcouche
 
+> **Désactivé par défaut, à utiliser à vos risques.** Le support d'Albion Online nous a dit que les outils tiers ne doivent pas afficher d'overlay sur le client du jeu. Cet overlay est une fenêtre séparée qui ne modifie pas le jeu, mais le support n'a pas voulu dire s'il compte. Activez-le dans **Settings → Overlay**.
+
 **Ctrl+Maj+O** affiche ou masque un chat transparent par-dessus le jeu. Tant qu'elle est verrouillée, les clics passent directement à Albion. **Ctrl+Maj+L** la déverrouille pour la déplacer et la redimensionner ; appuyez à nouveau pour la verrouiller.
 
 ### Raccourcis
@@ -125,6 +127,8 @@ Un problème ? [Ouvrez une issue](https://github.com/MrYellowHeart/AlbionChatTra
 ## Est-ce sans risque pour mon compte ?
 
 L'application **lit** seulement le trafic réseau, comme d'autres outils de la communauté Albion. Elle ne modifie pas le jeu, ne lit pas sa mémoire, n'injecte pas de code, n'automatise aucune action et n'envoie rien aux serveurs du jeu. Elle n'est ni créée, ni approuvée, ni soutenue par Sandbox Interactive, et aucun outil tiers ne peut garantir comment un éditeur de jeu le jugera. **Utilisation à vos risques.**
+
+Ce que le support d'Albion Online nous a dit (novembre 2026) : les outils tiers ne doivent pas modifier le client du jeu, suivre des joueurs hors de votre vue ni afficher d'overlay sur le client ; tous les outils sont utilisés à vos risques, et BattlEye peut vous déconnecter s'il détecte une interférence. Cette appli ne fait que lire le chat, et son overlay est désactivé par défaut.
 
 ## Problèmes courants
 

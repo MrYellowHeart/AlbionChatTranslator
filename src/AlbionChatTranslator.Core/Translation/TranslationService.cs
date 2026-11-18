@@ -14,6 +14,12 @@ public enum TranslationOutcome
     Skipped,
     /// <summary>Every translator was busy for now; shown untranslated.</summary>
     Busy,
+    /// <summary>
+    /// The language could not be recognised on this PC, so nothing was sent; shown as-is with a
+    /// click-to-translate option. (Such lines are usually English or mixed; sending them to an
+    /// online translator automatically would break the "only when there's no offline model" promise.)
+    /// </summary>
+    Unsure,
     Failed,
 }
 
@@ -89,7 +95,8 @@ public sealed class TranslationService : IAsyncDisposable
         lang is not null && (lang == Languages.Normalize(target) || ReadLanguages.Contains(lang));
 
     /// <summary>Queues an incoming chat line. <paramref name="callback"/> runs on a worker thread.</summary>
-    public void Submit(string text, Action<TranslationResult> callback)
+    /// <param name="userAsked">The player clicked [translate]: translate even if the language is unclear.</param>
+    public void Submit(string text, Action<TranslationResult> callback, bool userAsked = false)
     {
         var p = Glossary.Protect(text);
         if (!Glossary.HasTranslatableContent(p.Text) || p.Text.Count(char.IsLetter) < MinLetters)
@@ -106,7 +113,7 @@ public sealed class TranslationService : IAsyncDisposable
             return;
         }
 
-        if (!_queue.Writer.TryWrite(new Job(text, p, target, cacheKey, callback)))
+        if (!_queue.Writer.TryWrite(new Job(text, p, target, cacheKey, callback, userAsked)))
             callback(TranslationResult.Skip);
     }
 
@@ -182,6 +189,12 @@ public sealed class TranslationService : IAsyncDisposable
                 var same = new TranslationResult(TranslationOutcome.SameLanguage, SourceLanguage: local);
                 _cache.Set(job.CacheKey, same);
                 Deliver(job, same);
+                continue;
+            }
+            if (local is null && !job.UserAsked)
+            {
+                // Not cached: a click on [translate] must still reach the translators.
+                Deliver(job, new TranslationResult(TranslationOutcome.Unsure, Message: "Language not recognised"));
                 continue;
             }
             pending.Add((job, WithPlainEnglish(job.Protected, local), local));
@@ -322,7 +335,7 @@ public sealed class TranslationService : IAsyncDisposable
         _cts.Dispose();
     }
 
-    private sealed record Job(string Text, ProtectedText Protected, string Target, string CacheKey, Action<TranslationResult> Callback);
+    private sealed record Job(string Text, ProtectedText Protected, string Target, string CacheKey, Action<TranslationResult> Callback, bool UserAsked = false);
 }
 
 /// <summary>Small thread-safe least-recently-used cache.</summary>

@@ -63,6 +63,15 @@ public partial class SettingsWindow : Window
         ShowPackSize();
         TxtCustomTerms.Text = string.Join(", ", settings.CustomTerms);
         CbKeepCache.IsChecked = settings.KeepCacheOnDisk;
+        TxtOverlayWarning.Text = AppSettings.OverlayWarning;
+        CbOverlayEnabled.IsChecked = settings.OverlayEnabled;
+        CbOverlayEnabled.Checked += (_, _) =>
+        {
+            // Make the warning impossible to miss before it is turned on.
+            if (MessageBox.Show(this, AppSettings.OverlayWarning + Environment.NewLine + Environment.NewLine + "Turn on the overlay?", "Overlay",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+                CbOverlayEnabled.IsChecked = false;
+        };
         SliderOpacity.Value = settings.OverlayOpacity;
         CbOverlayTranslatedOnly.IsChecked = settings.OverlayTranslatedOnly;
         CbGlobal.IsChecked = settings.IncludeGlobalChannels;
@@ -179,6 +188,7 @@ public partial class SettingsWindow : Window
         _settings.CustomTerms = TxtCustomTerms.Text.Split([',', ';', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         _settings.KeepCacheOnDisk = CbKeepCache.IsChecked == true;
+        _settings.OverlayEnabled = CbOverlayEnabled.IsChecked == true;
         _settings.OverlayOpacity = SliderOpacity.Value;
         _settings.OverlayTranslatedOnly = CbOverlayTranslatedOnly.IsChecked == true;
         _settings.IncludeGlobalChannels = CbGlobal.IsChecked == true;

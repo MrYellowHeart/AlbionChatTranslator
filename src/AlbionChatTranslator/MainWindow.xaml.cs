@@ -89,6 +89,7 @@ public partial class MainWindow : Window
                 catch (IOException) { }
             }
             _hotkeys?.Dispose();
+            _overlayHotkeys?.Dispose();
             _focus?.Dispose();
             if (_capture is not null) await _capture.DisposeAsync();
         };
@@ -138,6 +139,7 @@ public partial class MainWindow : Window
 
         if (!_settings.KeepCacheOnDisk) _translation.ClearCacheFile(AppSettings.CachePath);
         StartPrefetch();
+        ApplyOverlayEnabled();
         _overlay?.ApplySettings();
         RebuildTabs();
     }
@@ -313,11 +315,11 @@ public partial class MainWindow : Window
         DiagnosticLog.Write($"line #{_messageCount} channel={line.ChannelId} kind={line.Kind} letters={line.Text.Count(char.IsLetter)} tabs=[{string.Join(", ", targets.Select(t => t.Name))}]{(unsorted ? " (unsorted)" : "")} -> {action}");
     }
 
-    private void Translate(ChatEntry entry)
+    private void Translate(ChatEntry entry, bool userAsked = false)
     {
         entry.MarkPending();
         var started = DateTime.UtcNow;
-        _translation.Submit(entry.Line.Text, result => Dispatcher.InvokeAsync(() =>
+        _translation.Submit(entry.Line.Text, userAsked: userAsked, callback: result => Dispatcher.InvokeAsync(() =>
         {
             entry.Apply(result);
             DiagnosticLog.Write($"  result channel={entry.Line.ChannelId} outcome={result.Outcome} by={result.By ?? "-"} source={result.SourceLanguage ?? "-"} after={(DateTime.UtcNow - started).TotalMilliseconds:0} ms{(result.Message is { } m ? $" note=\"{m}\"" : "")}");
@@ -358,7 +360,7 @@ public partial class MainWindow : Window
     private void LanguageTag_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Hyperlink { DataContext: ChatEntry entry }) return;
-        if (entry.AwaitingClick) Translate(entry);
+        if (entry.AwaitingClick) Translate(entry, userAsked: true);
         else if (entry.SourceLanguage is { } lang) OpenReply(lang);
     }
 
@@ -386,8 +388,32 @@ public partial class MainWindow : Window
         _hotkeys = new GlobalHotkeys(this);
         var missing = new List<string>();
         if (!_hotkeys.Register(ctrl: true, shift: true, alt: false, 'R', () => OpenReply(_lastForeignLanguage))) missing.Add("Ctrl+Shift+R");
-        if (!_hotkeys.Register(ctrl: true, shift: true, alt: false, 'O', ToggleOverlay)) missing.Add("Ctrl+Shift+O");
-        if (!_hotkeys.Register(ctrl: true, shift: true, alt: false, 'L', () => _overlay?.ToggleLock())) missing.Add("Ctrl+Shift+L");
+        if (missing.Count > 0)
+            TxtError.Text = $"Hotkeys already used by another app: {string.Join(", ", missing)}";
+        ApplyOverlayEnabled();
+    }
+
+    private GlobalHotkeys? _overlayHotkeys;
+
+    /// <summary>
+    /// The overlay is off unless turned on in Settings (see <see cref="AppSettings.OverlayWarning"/>).
+    /// While off: no button, no hotkeys (Ctrl+Shift+O/L stay free for other programs), no window.
+    /// </summary>
+    private void ApplyOverlayEnabled()
+    {
+        BtnOverlay.Visibility = _settings.OverlayEnabled ? Visibility.Visible : Visibility.Collapsed;
+        if (!_settings.OverlayEnabled)
+        {
+            _overlay?.Close();
+            _overlayHotkeys?.Dispose();
+            _overlayHotkeys = null;
+            return;
+        }
+        if (_overlayHotkeys is not null || _hotkeys is null) return; // already on, or window not ready yet
+        _overlayHotkeys = new GlobalHotkeys(this);
+        var missing = new List<string>();
+        if (!_overlayHotkeys.Register(ctrl: true, shift: true, alt: false, 'O', ToggleOverlay)) missing.Add("Ctrl+Shift+O");
+        if (!_overlayHotkeys.Register(ctrl: true, shift: true, alt: false, 'L', () => _overlay?.ToggleLock())) missing.Add("Ctrl+Shift+L");
         if (missing.Count > 0)
             TxtError.Text = $"Hotkeys already used by another app: {string.Join(", ", missing)}";
     }
@@ -396,6 +422,7 @@ public partial class MainWindow : Window
 
     private void ToggleOverlay()
     {
+        if (!_settings.OverlayEnabled) return;
         if (_overlay is { IsVisible: true })
         {
             _overlay.Close();

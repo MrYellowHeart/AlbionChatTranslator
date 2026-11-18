@@ -49,6 +49,8 @@ Die App tippt oder sendet nie etwas ins Spiel. **Du** fügst immer selbst ein un
 
 ### Overlay
 
+> **Standardmäßig aus, Nutzung auf eigenes Risiko.** Der Albion-Online-Support hat gesagt, dass Drittanbieter-Tools kein Overlay über dem Spielclient haben dürfen. Dieses Overlay ist ein eigenes Fenster und verändert das Spiel nicht, aber der Support wollte nicht sagen, ob es zählt. Einschalten unter **Settings → Overlay**.
+
 **Strg+Umschalt+O** zeigt oder versteckt einen durchsichtigen Chat über dem Spiel. Solange es gesperrt ist, gehen Klicks direkt an Albion. **Strg+Umschalt+L** entsperrt es zum Verschieben und Vergrößern; nochmal drücken zum Sperren.
 
 ### Tastenkürzel
@@ -125,6 +127,8 @@ Ein Problem gefunden? [Erstelle ein Issue](https://github.com/MrYellowHeart/Albi
 ## Ist das sicher für mein Konto?
 
 Die App **liest** nur Netzwerkverkehr, wie andere Albion-Community-Tools. Sie verändert das Spiel nicht, liest nicht seinen Speicher, injiziert keinen Code, automatisiert keine Eingaben und sendet nichts an die Spielserver. Sie wurde nicht von Sandbox Interactive erstellt, genehmigt oder unterstützt, und kein Drittanbieter-Tool kann versprechen, wie ein Spielehersteller es beurteilt. **Nutzung auf eigenes Risiko.**
+
+Was uns der Albion-Online-Support gesagt hat (November 2026): Drittanbieter-Tools dürfen den Spielclient nicht verändern, keine Spieler außerhalb deiner Sicht verfolgen und kein Overlay über dem Spielclient haben; alle Tools nutzt du auf eigenes Risiko, und BattlEye kann dich bei erkannter Einmischung aus dem Spiel werfen. Diese App liest nur den Chat, und ihr Overlay ist standardmäßig aus.
 
 ## Häufige Probleme
 

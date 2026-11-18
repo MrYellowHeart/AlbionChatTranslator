@@ -84,6 +84,12 @@ public sealed class ChatEntry : Observable
 
     public void Apply(TranslationResult result)
     {
+        if (result.Outcome == TranslationOutcome.Unsure)
+        {
+            // Nothing was sent: the language wasn't recognised. Offer a click instead.
+            MarkClickToTranslate();
+            return;
+        }
         AwaitingClick = false;
         _sourceLanguage = result.SourceLanguage;
         _translated = result.Outcome == TranslationOutcome.Translated ? result.Text : null;

@@ -12,7 +12,7 @@ Free, no account, no API key, no setup. Keeps translating even when online servi
 
 - **Translates what you read.** Messages from other players (Say, Whisper, Party, Guild, Alliance and, if you want, global channels) appear in your language as they arrive. Messages already in your language are left alone.
 - **Translates what you say.** Press a hotkey, type in your own language, press Enter, and the translation is ready to paste into Albion.
-- **Shows chat over the game.** An optional see-through overlay that your mouse clicks pass straight through.
+- **Can show chat over the game.** An optional see-through overlay, **off by default** (see [the warning](#overlay)).
 
 You can read and write in about 26 languages, and incoming messages are translated from any language Google Translate knows.
 
@@ -30,7 +30,7 @@ Updates download and install themselves.
 
 ### Reading chat
 
-Just play. Translated messages appear in the app (and in the overlay, if it is on), like this:
+Just play. Translated messages appear in the app (and in the overlay, if you turned it on), like this:
 
 ```
 14:02 Ana: Does anyone sell a cheap t6.1 bag in Lymhurst? (Portuguese)
@@ -53,7 +53,9 @@ The app never types into the game or sends anything there. **You** always paste 
 
 ### Overlay
 
-Press **Ctrl+Shift+O** to show or hide a see-through chat feed on top of the game.
+> **Off by default, use at your own risk.** Albion Online support has told us that third-party tools may not have an overlay on the game client. This overlay is a separate window: it doesn't draw inside the game or change it. We asked whether a window like this counts, and support said they can't give permission for any third-party software or say more. So it stays off unless you turn it on in **Settings → Overlay**, and the app asks you to confirm.
+
+Once enabled, press **Ctrl+Shift+O** to show or hide a see-through chat feed on top of the game.
 While it is locked, mouse clicks go straight through it to Albion. Press **Ctrl+Shift+L** to unlock it, drag it where you want, resize it from the corner, then press **Ctrl+Shift+L** again to lock it.
 
 Whispers always stay visible in it, both sides, even with *show only translated messages* on. It has the **same tabs as your in-game chat**, in a small bar above it; click a tab to switch (this doesn't take focus from the game), and tabs with new messages show how many. The overlay hides while you're in another program and comes back when you return to Albion. Albion needs to run in windowed or borderless mode for overlays to show.
@@ -63,8 +65,8 @@ Whispers always stay visible in it, both sides, even with *show only translated 
 | Keys | What it does |
 |---|---|
 | **Ctrl+Shift+R** | Reply to whoever wrote last |
-| **Ctrl+Shift+O** | Show / hide the overlay |
-| **Ctrl+Shift+L** | Unlock / lock the overlay to move it |
+| **Ctrl+Shift+O** | Show / hide the overlay (only when enabled) |
+| **Ctrl+Shift+L** | Unlock / lock the overlay to move it (only when enabled) |
 
 They work while Albion has focus. If another program already uses one, the app tells you; the buttons in the app do the same thing.
 
@@ -80,7 +82,7 @@ They work while Albion has focus. If another program already uses one, the app t
 | **Server and chat languages** | Which offline packs to keep ready. Changing them downloads the new packs in the background. |
 | **Translators** | Tried in order: **1.** your own Microsoft Translator or DeepL key (optional), **2.** offline models on your PC (nothing sent), **3.** Google Translate, only for languages without an offline model. Each can be turned on or off. |
 | **Remember translations for 7 days** | Fewer messages sent after a restart. Off by default. |
-| **Overlay** | Background opacity, and *show only translated messages*. |
+| **Overlay** | Off by default ([why](#overlay)). Turn it on, background opacity, *show only translated messages*. |
 
 ## How it works
 
@@ -98,7 +100,7 @@ They work while Albion has focus. If another program already uses one, the app t
 3. **Translating.** What is left, only the message text, goes through a chain of translators, each used only when the one before can't answer:
    1. **Your own key** (optional): Microsoft Translator (2,000,000 characters free) or DeepL (500,000/month free). Official services with published limits.
    2. **Offline models**: OPUS-MT running on your PC. Nothing is sent. Packs for the languages you ticked download once in the background (about 110 MB each, pinned and checksum-verified); a language you didn't tick downloads the first time it appears. They use about 200 MB more memory only while translating.
-   3. **Google Translate**: only for languages without an offline model, or while a pack is still downloading. Lines that arrive together share one request; if Google says "slow down", the app steps aside for a while instead of retrying.
+   3. **Google Translate**: only for languages without an offline model, or while a pack is still downloading. A line whose language the app can't recognise on your PC isn't sent anywhere; it shows a *[translate]* link instead. Lines that arrive together share one request; if Google says "slow down", the app steps aside for a while instead of retrying.
 
    Lines translated offline are marked `(Spanish · offline)` so you know.
 4. **Replying.** Your typed text is translated the same way and put on your clipboard.
@@ -152,6 +154,8 @@ Found a problem or something that looks wrong? Please [open an issue](../../issu
 ## Is it safe for my account?
 
 The app only **reads** network traffic, like other Albion community tools. It does not modify the game, read its memory, inject code, automate input or send anything to the game servers. It is not made, endorsed or supported by Sandbox Interactive, and no third-party tool can promise how a game company will judge it. **Use it at your own risk.**
+
+What Albion Online support told us (November 2026): third-party tools may not modify the game client, track players who aren't in your view, or have an overlay on the game client; all third-party tools are used at your own risk; and if their cheat protection (BattlEye) detects interference, it may kick you from the game. They don't give permission for any third-party software. This app reads chat only and doesn't touch the game, and its overlay is [off by default](#overlay).
 
 ## Troubleshooting
 

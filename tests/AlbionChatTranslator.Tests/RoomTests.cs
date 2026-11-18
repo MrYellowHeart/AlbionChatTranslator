@@ -207,3 +207,44 @@ public class ReplyMemoryTests
         Assert.False(memory.TryRecall("가방 팔아요?", out _, out _)); // only the last few are kept
     }
 }
+
+public class ReviewFixTests
+{
+    [Fact]
+    public void Offline_packs_and_cache_live_outside_the_install_folder()
+    {
+        var install = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AlbionChatTranslator");
+        if (Environment.GetEnvironmentVariable("ACT_DATA_DIR") is { Length: > 0 }) return; // overridden for this run
+        Assert.False(ModelStore.DefaultRoot.StartsWith(install + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
+        Assert.False(AppSettings.CachePath.StartsWith(install + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task Unrecognised_language_is_not_sent_unless_clicked()
+    {
+        var fake = new FakeProvider(t => ("translated", "xx"));
+        await using var svc = new TranslationService(new ChatLanguageDetector(), fake) { TargetLanguage = "en" };
+        // A line the local detector can't place (mixed languages / scripts).
+        var detector = new ChatLanguageDetector();
+        string[] candidates = ["hmmmm", "brrr zzz", "ok привет hola bonjour ciao hallo", "hola привет 你好 hello bonjour", "jajaja kkkk hahaha xdxd lolol", "mdr ptdr xptdr lolilol", "brrrr hmmmm zzzzz pfffft"];
+        string? unclear = candidates.FirstOrDefault(c => detector.Detect(Glossary.Protect(c).Text, "en") is null);
+        Assert.True(unclear is not null, "no sample line was unrecognised: " + string.Join(" | ", candidates.Select(c => detector.Detect(Glossary.Protect(c).Text, "en"))));
+
+        var auto = await ServiceHelpers.Submit(svc, unclear!);
+        Assert.Equal(TranslationOutcome.Unsure, auto.Outcome);
+        Assert.Empty(fake.Sent);
+
+        var tcs = new TaskCompletionSource<TranslationResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        svc.Submit(unclear, tcs.SetResult, userAsked: true);
+        await tcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.Single(fake.Sent);
+    }
+
+    [Fact]
+    public void Only_chat_and_your_own_whispers_are_listened_to()
+    {
+        // No catch-all handlers: the parser handles chat events and the one whisper request only.
+        Assert.All(ChatEventParser.HandledEvents, e => Assert.Contains("Chat", e.ToString()));
+        Assert.Equal(193, ChatEventParser.WhisperRequestCode);
+    }
+}

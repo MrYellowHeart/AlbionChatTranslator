@@ -58,17 +58,9 @@ public sealed class ChatEventParser
         var builder = ReceiverBuilder.Create();
         foreach (var code in HandledEvents)
             builder.AddHandler(new DelegateEventHandler((int)code, Handle));
-        // Discovery for the diagnostic log: the layout of any other event that carries text,
-        // once per event type (text itself is never logged, only its length).
-        foreach (var code in Enum.GetValues<EventCodes>().Distinct().Except(HandledEvents))
-            builder.AddHandler(new DelegateEventHandler((int)code, LogOtherEvent));
-        // Same discovery for what the game client sends (requests) and the direct answers to them:
-        // that is how the player's own whispers travel.
-        for (int code = 0; code < MaxOperationCode; code++)
-        {
-            builder.AddHandler(new DelegateRequestHandler(code, HandleRequest));
-            builder.AddHandler(new DelegateResponseHandler(code, r => LogOperation("response", r.OperationCode, r.Parameters, _responseSeen)));
-        }
+        // The one thing the game client sends that the app reads: your own whispers.
+        // Nothing else the client sends, and no other server event, is looked at.
+        builder.AddHandler(new DelegateRequestHandler(WhisperRequestCode, HandleRequest));
         return builder.Build();
     }
 
@@ -238,8 +230,6 @@ public sealed class ChatEventParser
         RoomJoined?.Invoke(room, channel);
     }
 
-    private const int MaxOperationCode = 1024;
-
     /// <summary>
     /// The request the game client sends for a whisper: [0] recipient, [1] text (seen in game,
     /// Nov 2026). Upstream's code list has no operation names, so this number is ours to keep
@@ -255,7 +245,9 @@ public sealed class ChatEventParser
             Emit(line);
             return;
         }
-        LogOperation("request", packet.OperationCode, packet.Parameters, _requestSeen);
+        // Layout changed (for example after an Albion patch): note it once, without any text.
+        if (packet.OperationCode == WhisperRequestCode)
+            LogShapeOnce("whisper-request:unread", "outgoing whisper not understood", packet.Parameters);
     }
 
     private ChatLine? ParseOutgoingWhisper(Dictionary<byte, object> p)
@@ -265,28 +257,6 @@ public sealed class ChatEventParser
         if (!ParamReader.TryGetString(p, 0, out var recipient) || recipient.Length is 0 or > 32 || recipient.Contains(' ')) return null;
         if (!ParamReader.TryGetString(p, 1, out var text) || !IsUsableText(text)) return null;
         return new ChatLine(_clock.GetLocalNow(), KnownChannels.Whisper, ChannelKind.Whisper, recipient, Truncate(text), Outgoing: true);
-    }
-    private readonly bool[] _otherSeen = new bool[4096];
-    private readonly bool[] _requestSeen = new bool[MaxOperationCode];
-    private readonly bool[] _responseSeen = new bool[MaxOperationCode];
-
-    private static bool CarriesText(Dictionary<byte, object> p) =>
-        p.Values.Any(v => v is string { Length: > 0 } s && !s.StartsWith('@') || v is string[] { Length: > 0 });
-
-    private void LogOperation(string kind, int code, Dictionary<byte, object> p, bool[] seen)
-    {
-        if (Diagnostic is null || code < 0 || code >= seen.Length || seen[code] || !CarriesText(p)) return;
-        seen[code] = true;
-        Diagnostic.Invoke($"{kind} {code}: {EventShape.Describe(p)}");
-    }
-
-    private void LogOtherEvent(EventPacket packet)
-    {
-        int code = packet.EventCode;
-        if (Diagnostic is null || code < 0 || code >= _otherSeen.Length || _otherSeen[code]) return;
-        if (!packet.Parameters.Values.Any(v => v is string { Length: > 0 } s && !s.StartsWith('@') || v is string[] { Length: > 0 })) return;
-        _otherSeen[code] = true;
-        Diagnostic.Invoke($"other event {(EventCodes)code}: {EventShape.Describe(packet.Parameters)}");
     }
 
     private void LogShapeOnce(string id, string label, IReadOnlyDictionary<byte, object> p, params byte[] hidden)
@@ -336,16 +306,6 @@ public sealed class ChatEventParser
         {
             try { action(packet); }
             catch (Exception e) { System.Diagnostics.Debug.WriteLine($"[ChatEventParser] request {Code} failed: {e.Message}"); }
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class DelegateResponseHandler(int code, Action<ResponsePacket> action) : PacketHandler<ResponsePacket>(code)
-    {
-        protected override Task OnHandleAsync(ResponsePacket packet)
-        {
-            try { action(packet); }
-            catch (Exception e) { System.Diagnostics.Debug.WriteLine($"[ChatEventParser] response {Code} failed: {e.Message}"); }
             return Task.CompletedTask;
         }
     }

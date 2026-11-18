@@ -87,13 +87,15 @@
                 <Button Content="Forget all translations" HorizontalAlignment="Left" Padding="8,2" FontSize="11" Margin="20,0,0,0" Click="BtnClearCache_Click"/>
 
                 <TextBlock Text="OVERLAY" Style="{StaticResource SectionHeader}"/>
+                <CheckBox x:Name="CbOverlayEnabled" Content="Enable the overlay (at your own risk)"/>
+                <TextBlock x:Name="TxtOverlayWarning" Style="{StaticResource Hint}" Margin="20,0,0,6"/>
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Background" Foreground="#D0D0D0" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <Slider x:Name="SliderOpacity" Minimum="0" Maximum="1" Width="200" TickFrequency="0.05" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
                 </StackPanel>
                 <CheckBox x:Name="CbOverlayTranslatedOnly" Content="Show only translated messages in the overlay"/>
                 <TextBlock Style="{StaticResource Hint}"
-                           Text="Hotkeys (work while Albion has focus): Ctrl+Shift+R reply · Ctrl+Shift+O show/hide overlay · Ctrl+Shift+L unlock overlay to move it."/>
+                           Text="Hotkeys (work while Albion has focus): Ctrl+Shift+R reply. When the overlay is enabled: Ctrl+Shift+O show/hide it, Ctrl+Shift+L unlock it to move."/>
 
                 <TextBlock Text="CHAT" Style="{StaticResource SectionHeader}"/>
                 <CheckBox x:Name="CbGlobal" Content="Translate global channels automatically (Help, Looking for group, Recruit, trade…)"/>

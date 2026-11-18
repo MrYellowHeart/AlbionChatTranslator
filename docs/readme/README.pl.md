@@ -49,6 +49,8 @@ Aplikacja nigdy nic nie wpisuje ani nie wysyła do gry. Wklejasz i wysyłasz zaw
 
 ### Nakładka
 
+> **Domyślnie wyłączona, używasz na własne ryzyko.** Wsparcie Albion Online napisało, że narzędzia firm trzecich nie mogą mieć nakładki na kliencie gry. Ta nakładka to osobne okno, które nie zmienia gry, ale wsparcie nie odpowiedziało, czy się liczy. Włączysz ją w **Settings → Overlay**.
+
 **Ctrl+Shift+O** pokazuje lub ukrywa przezroczysty czat nad grą. Gdy jest zablokowana, kliknięcia trafiają prosto do Albion. **Ctrl+Shift+L** odblokowuje ją, by ją przesunąć i zmienić rozmiar; naciśnij ponownie, by zablokować.
 
 ### Skróty
@@ -125,6 +127,8 @@ Znalazłeś problem? [Zgłoś issue](https://github.com/MrYellowHeart/AlbionChat
 ## Czy to bezpieczne dla konta?
 
 Aplikacja tylko **czyta** ruch sieciowy, jak inne narzędzia społeczności Albion. Nie modyfikuje gry, nie czyta jej pamięci, nie wstrzykuje kodu, nie automatyzuje akcji i nic nie wysyła na serwery gry. Nie jest stworzona, zatwierdzona ani wspierana przez Sandbox Interactive, a żadne zewnętrzne narzędzie nie może obiecać, jak oceni je firma od gry. **Używasz na własne ryzyko.**
+
+Co napisało nam wsparcie Albion Online (listopad 2026): narzędzia firm trzecich nie mogą modyfikować klienta gry, śledzić graczy poza twoim polem widzenia ani mieć nakładki na kliencie gry; wszystkich używasz na własne ryzyko, a BattlEye może cię wyrzucić, jeśli wykryje ingerencję. Ta aplikacja tylko czyta czat, a jej nakładka jest domyślnie wyłączona.
 
 ## Częste problemy
 

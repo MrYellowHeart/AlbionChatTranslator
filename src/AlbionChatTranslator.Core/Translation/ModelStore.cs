@@ -22,9 +22,7 @@ public sealed class ModelStore
         _http = http ?? CreateDefaultClient();
     }
 
-    public static string DefaultRoot => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "AlbionChatTranslator", "models");
+    public static string DefaultRoot => Path.Combine(Settings.AppSettings.LocalDataDirectory, "models");
 
     public string RootDirectory { get; }
 
@@ -47,19 +45,23 @@ public sealed class ModelStore
             Directory.Delete(RootDirectory, recursive: true);
     }
 
-    /// <summary>Makes sure the pack is on disk and verified. Concurrent callers share one download.</summary>
+    /// <summary>
+    /// Makes sure the pack is on disk and verified. Concurrent callers share one download.
+    /// <paramref name="ct"/> only stops this caller waiting: the shared download keeps going, so
+    /// cancelling a background pre-download can't fail a translation waiting on the same pack.
+    /// </summary>
     public Task<string> EnsureInstalledAsync(ModelPack pack, CancellationToken ct = default)
     {
         if (IsInstalled(pack)) return Task.FromResult(PackDirectory(pack));
 
-        var lazy = _inFlight.GetOrAdd(pack.Id, _ => new Lazy<Task<string>>(() => DownloadAsync(pack, ct)));
-        return AwaitAndForget(pack.Id, lazy.Value);
+        var lazy = _inFlight.GetOrAdd(pack.Id, _ => new Lazy<Task<string>>(() => DownloadAndForgetAsync(pack)));
+        return lazy.Value.WaitAsync(ct);
     }
 
-    private async Task<string> AwaitAndForget(string id, Task<string> task)
+    private async Task<string> DownloadAndForgetAsync(ModelPack pack)
     {
-        try { return await task.ConfigureAwait(false); }
-        finally { _inFlight.TryRemove(id, out _); }
+        try { return await DownloadAsync(pack, CancellationToken.None).ConfigureAwait(false); }
+        finally { _inFlight.TryRemove(pack.Id, out _); }
     }
 
     private async Task<string> DownloadAsync(ModelPack pack, CancellationToken ct)
